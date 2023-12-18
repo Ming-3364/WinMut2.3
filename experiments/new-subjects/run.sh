@@ -56,6 +56,8 @@ run() {
 		export WINMUT_MAX_RUN_CASES
 		bash -c "${RUN_COMMAND}"
 	fi
+	echo Log File in : 
+	echo $WINMUT_LOG_FILE_PREFIX
 }
 
 collect-result() {
