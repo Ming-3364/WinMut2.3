@@ -33,7 +33,7 @@ static std::string get_print_line(const char *prefix) {
 }
 static void print_time_line(const char *prefix) {
   for (const auto *filename :
-       {"forked", "forked-simple", "timing", "timeout", "panic", "trace"}) {
+       {"forked", "forked-simple", "timing", "timeout", "panic", "trace", "proc_tree"}) {
     writeToLogFile(filename, get_print_line(prefix).c_str());
   }
 }

@@ -4,6 +4,8 @@
 
 #include <sstream>
 
+#include "llvm/Transforms/WinMut/DebugMacro.h"
+
 using namespace llvm;
 using namespace std;
 
@@ -35,7 +37,11 @@ void MutUtil::getAllMutations(const string &path) {
   string buf;
   // string path = getenv("HOME");
   // path += "/tmp/accmut/mutations.txt";
+#ifdef TMP_CTRL
+  string pathmut = path + ".mut.tmpCtrl";
+#else
   string pathmut = path + ".mut";
+#endif
 
   std::ifstream fin(pathmut, ios::in);
 

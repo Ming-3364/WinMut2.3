@@ -314,6 +314,24 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
         {
           int from = depSpec->mutSpecs[0].from;
           int to = depSpec->mutSpecs[depSpec->totlength - 1].to;
+                   
+          // ------------- proc_tree -----------------
+          sprintf(buf, "%2d=>%2d:%2d:%2d(%s-%2d)", MUTATION_ID, 
+                      from, to, eq_class[i].mut_id[0], 
+                      moduleName, eq_class[i].mut_id[0] - offset);
+          if (WIFEXITED(status)) {
+            sprintf(buf, "%s: /r%2d", buf, WEXITSTATUS(status));
+          } else if (WIFSIGNALED(status)) {
+            sprintf(buf, "%s: /s%2d", buf, WTERMSIG(status));
+          } else {
+            sprintf(buf, "%s: /e", buf);
+          }
+          for (int eq_class_mut_id :  eq_class[i].mut_id)
+            sprintf(buf, "%s [%2d : %2ld]", buf, eq_class_mut_id, eq_class[i].value);
+          sprintf(buf, "%s\n", buf);
+          writeToLogFile("proc_tree", buf);
+          // ------------- proc_tree -----------------
+
           if (WIFEXITED(status)) {
             sprintf(buf, "%d=>%d:%d:%d(%s-%d): %ld/r%d\n", MUTATION_ID, from,
                     to, eq_class[i].mut_id[0], moduleName,
