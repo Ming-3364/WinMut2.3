@@ -689,6 +689,7 @@ RetType MutationManager::process_T_arith_goodvar(OpType left, OpType right,
 #ifdef DEBUG_OUTPUT
     int fd = open("eq_class", O_CREAT | O_APPEND | O_WRONLY, 0644);
     snprintf(buf, 1024, "EXECUTE: %d %d\n", MUTATION_ID, from);
+    printf("EXECUTE: %d %d\n", MUTATION_ID, from);
     write(fd, buf, strlen(buf));
     close(fd);
 #endif
@@ -699,6 +700,7 @@ RetType MutationManager::process_T_arith_goodvar(OpType left, OpType right,
 #ifdef DEBUG_OUTPUT
     int fd = open("eq_class", O_CREAT | O_APPEND | O_WRONLY, 0644);
     snprintf(buf, 1024, "BVL: %d %d\n", MUTATION_ID, from);
+    printf("BVL: %d %d\n", MUTATION_ID, from);
     write(fd, buf, strlen(buf));
     close(fd);
 #endif
@@ -722,6 +724,7 @@ RetType MutationManager::process_T_arith_goodvar(OpType left, OpType right,
 #ifdef DEBUG_OUTPUT
     int fd = open("eq_class", O_CREAT | O_APPEND | O_WRONLY, 0644);
     snprintf(buf, 1024, "RUN: %d %d\n", MUTATION_ID, from);
+    printf("RUN: %d %d\n", MUTATION_ID, from);
     write(fd, buf, strlen(buf));
     close(fd);
 #endif
@@ -736,6 +739,7 @@ RetType MutationManager::process_T_arith_goodvar(OpType left, OpType right,
 #ifdef DEBUG_OUTPUT
         int fd = open("eq_class", O_CREAT | O_APPEND | O_WRONLY, 0644);
         write(fd, "BBVVLL\n", 7);
+        printf("BBVVLL")
         close(fd);
 #endif
         return process_T_arith(arg->rmi, arg->from_local, arg->to_local, left,
@@ -818,6 +822,8 @@ RetType MutationManager::process_T_arith_goodvar(OpType left, OpType right,
       char buf[1024];
       snprintf(buf, 1024, "id: %d %d %d\n", arg->left_id, arg->right_id,
                ret_id);
+      printf("id: %d %d %d\n", arg->left_id, arg->right_id,
+               ret_id);
       int fd = open("eq_class", O_APPEND | O_CREAT | O_WRONLY, 0644);
       write(fd, buf, strlen(buf));
       close(fd);
@@ -894,6 +900,8 @@ RetType MutationManager::process_T_arith_goodvar(OpType left, OpType right,
 #ifdef DEBUG_OUTPUT
       char buf[1024];
       snprintf(buf, 1024, "id: %d %d %d\n", arg->left_id, arg->right_id,
+               ret_id);
+      printf("id: %d %d %d\n", arg->left_id, arg->right_id,
                ret_id);
       int fd = open("eq_class", O_APPEND | O_CREAT | O_WRONLY, 0644);
       write(fd, buf, strlen(buf));

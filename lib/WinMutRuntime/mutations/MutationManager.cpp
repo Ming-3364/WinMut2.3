@@ -20,14 +20,17 @@ void MutationManager::dump_eq_class() {
   int fd = __accmut_libc_open("eq_class", O_WRONLY | O_CREAT | O_APPEND, 0644);
   char buf[1024];
   snprintf(buf, 1024, "MUTATION_ID: %d, eq_num: %d\n", MUTATION_ID, eq_num);
+  printf("MUTATION_ID: %d, eq_num: %d\n", MUTATION_ID, eq_num);
   if (__accmut_libc_write(fd, buf, strlen(buf)) < 0)
     exit(-1);
   for (int i = 0; i < eq_num; ++i) {
     snprintf(buf, 1024, "%ld: ", eq_class[i].value);
+    printf("%ld: ", eq_class[i].value);
     if (__accmut_libc_write(fd, buf, strlen(buf)) < 0)
       exit(-1);
     for (int j : eq_class[i].mut_id) {
       snprintf(buf, 1024, "%d ", j);
+      printf("%d ", j);
       if (__accmut_libc_write(fd, buf, strlen(buf)) < 0)
         exit(-1);
     }
@@ -237,6 +240,19 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
   }
 
   int64_t result = eq_class[0].value;
+    
+  // -------------- reduced in ori -----------------
+  if (eq_class[0].mut_id[0] == 0){
+    char buf[1000];
+    sprintf(buf, " reduced:");
+
+    for (int eq_class_mut_id :  eq_class[0].mut_id)
+      sprintf(buf, "%s [%2d : %2ld]", buf, eq_class_mut_id, eq_class[0].value);
+    sprintf(buf, "%s\n", buf);
+    writeToLogFile("proc_tree", buf);
+  }
+  // -------------- reduced in ori -----------------
+
   if (get_default_timer() != 0) {
     if (likely(MUTATION_ID != 0))
       accmut_disable_real_timer();

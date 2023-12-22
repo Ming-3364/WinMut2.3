@@ -41,7 +41,7 @@ run() {
 	export CXX="${WINMUT_BASE_DIR}/bin/clang++"
 	ulimit -s 102400
 	export LD_PRELOAD="${WINMUT_BASE_DIR}/lib/libLLVMWinMutRuntime.so"
-
+	# export LD_DEBUG="symbols"
 	load_config
 
 	rm ${WINMUT_LOG_DIR} -rf
