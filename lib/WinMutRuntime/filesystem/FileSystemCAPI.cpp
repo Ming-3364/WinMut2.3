@@ -19,6 +19,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <llvm/Transforms/WinMut/DebugMacro.h>
+// ------------------- mut output for demo site ---------------------
+#include <llvm/WinMutRuntime/filesystem/MutOutput.h>
+// ------------------- mut output for demo site ---------------------
+
 // #define LOGGING
 
 using namespace accmut;
@@ -1219,7 +1224,15 @@ int open(const char *pathname, int flags, ...) {
                  disable_system();
                  return __accmut_libc_open(pathname, flags, mode);
                }
-               return doopenat(AT_FDCWD, pathname, flags, mode);
+               int fd = doopenat(AT_FDCWD, pathname, flags, mode);
+                // ------------------- mut output for demo site ---------------------
+#ifdef MUT_OUTPUT_FOR_DEMO_SITE
+                // if (accmut::MutOutput::isStdout(fd))
+                //   accmut::MutOutput::getInstance()->writeStdoutFile(buf, count);
+                accmut::MutOutput::getInstance()->open_and_register_MutOutputFile(pathname, fd, flags, mode);
+#endif
+                // ------------------- mut output for demo site ---------------------
+               return fd;
              },
              "open", pathname, flags, mode)
       .call();
@@ -1340,7 +1353,7 @@ ssize_t read(int fd, void *buf, size_t count) {
                      buf1 = largebuf;
                    } else {
                      buf1 = largebuf;
-                   }
+                   } 
 
                    if (!oft->isPipe(fd)) {
                      errno = 0;
@@ -1399,8 +1412,17 @@ ssize_t write(int fd, const void *buf, size_t count) {
                  return count;
                }
                if (oft->shouldOrigin(fd)) {
-                 ssize_t ret = oft->write(fd, buf, count, err);
 
+                  // ------------------- mut output for demo site ---------------------
+#ifdef MUT_OUTPUT_FOR_DEMO_SITE
+                  // if (accmut::MutOutput::isStdout(fd))
+                  //   accmut::MutOutput::getInstance()->writeStdoutFile(buf, count);
+
+                  accmut::MutOutput::getInstance()->write_registered_MutOutputFile(fd, buf, count);
+#endif
+                  // ------------------- mut output for demo site ---------------------
+
+                 ssize_t ret = oft->write(fd, buf, count, err);
                  if (oft->isReal()) {
                    errno = 0;
                    ssize_t oriret = __accmut_libc_write(fd, buf, count);
@@ -1412,11 +1434,19 @@ ssize_t write(int fd, const void *buf, size_t count) {
                    errnoSetter.set(err.value());
                  return ret;
                } else {
+                  // ------------------- mut output for demo site ---------------------
+#ifdef MUT_OUTPUT_FOR_DEMO_SITE
+                  // if (accmut::MutOutput::isStdout(fd))
+                  //   accmut::MutOutput::getInstance()->writeStdoutFile(buf, count);
+                  if (fd == 1)
+                    accmut::MutOutput::getInstance()->write_registered_MutOutputFile(fd, buf, count);
+#endif
+                  // ------------------- mut output for demo site ---------------------
                  if (oft->isReal()) {
                    errnoSetter.disable();
                    return __accmut_libc_write(fd, buf, count);
                  }
-                 return count;
+                  return count;
                }
              },
              "write", fd, (const char *)buf, count)

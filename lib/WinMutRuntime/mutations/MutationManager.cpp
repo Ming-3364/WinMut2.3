@@ -16,6 +16,12 @@
 #include <string.h>
 #include <sys/wait.h>
 
+
+#include <llvm/Transforms/WinMut/DebugMacro.h>
+// ------------------- mut output for demo site ---------------------
+#include <llvm/WinMutRuntime/filesystem/MutOutput.h>
+// ------------------- mut output for demo site ---------------------
+
 void MutationManager::dump_eq_class() {
   int fd = __accmut_libc_open("eq_class", O_WRONLY | O_CREAT | O_APPEND, 0644);
   char buf[1024];
@@ -250,7 +256,12 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
       if (sigprocmask(SIG_BLOCK, &mask, &orig_mask) < 0) {
         exit(-1);
       }
-
+      // ------------------- mut output for demo site ---------------------
+#ifdef MUT_OUTPUT_FOR_DEMO_SITE
+      // accmut::MutOutput::getInstance()->createStdoutFileForN0(eq_class[i].mut_id);
+      accmut::MutOutput::getInstance()->prepare_copy(MUTATION_ID, eq_class[i].mut_id);
+#endif
+      // ------------------- mut output for demo site ---------------------
       int pid = __accmut_libc_fork();
       if (pid < 0) {
         LOG("fork FAILED");
@@ -273,6 +284,12 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
           accmut::MirrorFileSystem::getInstance()->setVirtual();
           accmut::OpenFileTable::getInstance()->setVirtual();
         }
+        // ------------------- mut output for demo site ---------------------
+#ifdef MUT_OUTPUT_FOR_DEMO_SITE
+        // accmut::MutOutput::getInstance()->createStdoutFileForN0(eq_class[i].mut_id);
+        accmut::MutOutput::getInstance()->copy_and_register_MutOutputFile(eq_class[i].mut_id);
+#endif
+        // ------------------- mut output for demo site ---------------------
         return eq_class[i].value;
       } else {
         struct timespec timeout;

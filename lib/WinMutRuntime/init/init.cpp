@@ -16,6 +16,12 @@
 #include <map>
 #include <sstream>
 #include <sys/wait.h>
+
+#include <llvm/Transforms/WinMut/DebugMacro.h>
+// ------------------- mut output for demo site ---------------------
+#include <llvm/WinMutRuntime/filesystem/MutOutput.h>
+// ------------------- mut output for demo site ---------------------
+
 extern "C" {
 extern void init_stdio();
 }
@@ -174,6 +180,13 @@ if (mcheck(abort_func) < 0) {
 
   init_stdio();
 
+  // ------------------- mut output for demo site ---------------------
+#ifdef MUT_OUTPUT_FOR_DEMO_SITE
+  accmut::MutOutput::hold();
+  // accmut::MutOutput::getInstance()->createStdoutFileFor0();
+#endif
+  // ------------------- mut output for demo site ---------------------
+  
   bool panic = false;
 
   long usecmin = std::numeric_limits<long>::max();
