@@ -18,9 +18,16 @@
 #include <sys/wait.h>
 
 #include <llvm/Transforms/WinMut/DebugMacro.h>
+
 // ------------------- mut output for demo site ---------------------
 #include <llvm/WinMutRuntime/filesystem/MutOutput.h>
 // ------------------- mut output for demo site ---------------------
+
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+#ifdef MUT_TOOL
+#include <llvm/WinMutRuntime/logging/LogForMutTool.h>
+#endif
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
 
 extern "C" {
 extern void init_stdio();
@@ -39,14 +46,44 @@ static std::string get_print_line(const char *prefix) {
 }
 static void print_time_line(const char *prefix) {
   for (const auto *filename :
-       {"forked", "forked-simple", "timing", "timeout", "panic", "trace", "proc_tree"}) {
+       {"forked", "forked-simple", "timing", "timeout", "panic", "trace", "proc_tree"}) 
+  {
     writeToLogFile(filename, get_print_line(prefix).c_str());
   }
+
+  // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+#ifdef MUT_TOOL
+  writeToMutToolLogFile("proc_tree",  get_print_line(prefix).c_str());
+#endif
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+#ifdef DUMP_ALL_MUTATION
+    writeToMutToolLogFile("all_mutation",  get_print_line(prefix).c_str());
+#endif
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+
 }
 static void print_single_time_line(const char *prefix, const char *filename) {
   auto d = std::chrono::steady_clock::now().time_since_epoch();
   writeToLogFile(filename, get_print_line(prefix).c_str());
 }
+
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+#ifdef DUMP_ALL_MUTATION
+static void dump_all_mutation(){
+  auto mm = MutationManager::getInstance();
+  std::vector<Mutation> all_mutation = mm->get_all_mutation();
+  for (auto m : all_mutation) {
+    char buf[1000];
+    sprintf(buf, "%d:%d:%d:%d:%d\n", m.type, m.sop, m.op_0, m.op_1, m.op_2);
+    writeToMutToolLogFile("all_mutation", buf);
+  }
+}
+#endif
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+
+
 static void exit_time_printer() {
   if (MUTATION_ID == 0) {
     static bool done = false;
@@ -55,6 +92,13 @@ static void exit_time_printer() {
     } else {
       return;
     }
+
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+#ifdef DUMP_ALL_MUTATION
+  dump_all_mutation();
+#endif
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+
     const char *prefix = "++ ";
     print_time_line(prefix);
     writeToLogFile("ran", "#");
@@ -133,6 +177,7 @@ if (mcheck(abort_func) < 0) {
   char *maxRunCasesStr = getenv("WINMUT_MAX_RUN_CASES");
   int maxRunCases = INT_MAX;
   if (maxRunCasesStr) {
+
     maxRunCases = strtol(maxRunCasesStr, NULL, 10);
     accmut::Path runnedFile = accmut::Path(getLogFilePrefix()) + accmut::Path("ran");
     int alreadyRunned = 0;
@@ -140,10 +185,18 @@ if (mcheck(abort_func) < 0) {
     if (__accmut_libc_lstat(runnedFile.c_str(), &st) != -1) {
       alreadyRunned = st.st_size;
     }
+
     if (alreadyRunned >= maxRunCases) {
       disable_system();
       return;
     }
+
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+// 只有在指定了 WINMUT_MAX_RUN_CASES 时才起效
+#ifdef MUT_TOOL
+    mkMutToolLogDir(alreadyRunned + 1);
+#endif
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
   }
 
   char *measureCount = getenv("WINMUT_MEASURE_COUNT");

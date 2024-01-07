@@ -2,6 +2,7 @@
 #include <llvm/WinMutRuntime/filesystem/LibCAPI.h>
 #include <llvm/WinMutRuntime/mutations/MutationIDDecl.h>
 #include <llvm/Transforms/WinMut/DebugMacro.h>
+#include <llvm/WinMutRuntime/logging/LogForMutTool.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -79,24 +80,47 @@ namespace accmut{
     //     return S_ISREG(st.st_mode);
     // }
 
+    // 替换为使用 MutToolLogFilePrefix 的版本
+    // const char* getMutOutputFilePath(const char* filepath_str, int mut_id, char* buf){
+    //     char directory[512];
+    //     char filename[512];
+
+    //     const char* lastSlash = strrchr(filepath_str, '/');
+
+    //     if (lastSlash != NULL) {
+    //         // 文件路径包含 /
+    //         size_t slashIndex = lastSlash - filepath_str + 1;
+    //         strncpy(directory, filepath_str, slashIndex);
+    //         directory[slashIndex] = '\0';
+
+    //         strcpy(filename, lastSlash + 1);
+    //     } else {
+    //         // 文件路径没有 /
+    //         strcpy(directory, "");
+    //         strcpy(filename, filepath_str);
+    //     }
+
+    //     const char* mutOutputFilePrefix = "mut_output-";
+    //     if (strncmp(filename, mutOutputFilePrefix, strlen(mutOutputFilePrefix)) == 0){ // mut_output-xxx-xxx
+    //         const char* secondDash = strchr(strchr(filename, '-') + 1, '-');
+    //         strcpy(filename, secondDash + 1);
+    //     }
+
+    //     sprintf(buf, "%smut_output-%d-%s", directory, mut_id, filename);
+    //     return buf;
+    // }
+
     const char* getMutOutputFilePath(const char* filepath_str, int mut_id, char* buf){
-        char directory[512];
-        char filename[512];
-
-        const char* lastSlash = strrchr(filepath_str, '/');
-
-        if (lastSlash != NULL) {
-            // 文件路径包含 /
-            size_t slashIndex = lastSlash - filepath_str + 1;
-            strncpy(directory, filepath_str, slashIndex);
-            directory[slashIndex] = '\0';
-
-            strcpy(filename, lastSlash + 1);
-        } else {
-            // 文件路径没有 /
-            strcpy(directory, "");
-            strcpy(filename, filepath_str);
+        char filename[1024];
+        size_t length = strlen(filepath_str);
+        int i = 0;
+        for (; i < length; ++i){
+            if (filepath_str[i] == '\\')
+                filename[i] = '_';
+            else
+                filename[i] = filepath_str[i];
         }
+        filename[i] = '\0';
 
         const char* mutOutputFilePrefix = "mut_output-";
         if (strncmp(filename, mutOutputFilePrefix, strlen(mutOutputFilePrefix)) == 0){ // mut_output-xxx-xxx
@@ -104,7 +128,7 @@ namespace accmut{
             strcpy(filename, secondDash + 1);
         }
 
-        sprintf(buf, "%smut_output-%d-%s", directory, mut_id, filename);
+        sprintf(buf, "%smut_output-%d-%s", getMutToolLogFilePrefix(), mut_id, filename);
         return buf;
     }
 

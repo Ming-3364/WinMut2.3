@@ -21,6 +21,8 @@
 
 // #define DEBUG_OUTPUT
 
+#include <llvm/Transforms/WinMut/DebugMacro.h>
+
 struct EqClass {
   int64_t value{};
   std::vector<int> mut_id;
@@ -121,6 +123,15 @@ template <typename OpType, typename RetType, CalcType calcType> struct CalcFunc;
 
 class MutationManager {
 public:
+
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+#ifdef DUMP_ALL_MUTATION
+  std::vector<Mutation> get_all_mutation(){
+    return this->all_mutation;
+  }
+#endif
+// ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+
 
 private:
   template <typename OpType, typename RetType, CalcType calcType>

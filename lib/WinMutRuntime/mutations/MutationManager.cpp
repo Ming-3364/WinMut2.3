@@ -5,6 +5,7 @@
 #include <llvm/WinMutRuntime/filesystem/MirrorFileSystem.h>
 #include <llvm/WinMutRuntime/filesystem/OpenFileTable.h>
 #include <llvm/WinMutRuntime/logging/LogFilePrefix.h>
+#include <llvm/WinMutRuntime/logging/LogForMutTool.h>
 #include <llvm/WinMutRuntime/mutations/MutationManager.h>
 #include <llvm/WinMutRuntime/signal/Handlers.h>
 #include <llvm/WinMutRuntime/timers/TimerDefault.h>
@@ -242,7 +243,33 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
     exit(-1);
   }
 
+  // {
+  //   char buf[1000];
+  //   sprintf(buf, "fork_eqclass\n");
+  //   writeToLogFile("proc_tree", buf);
+  // }
+
   int64_t result = eq_class[0].value;
+
+  // -------------- proc_tree: reduced in ori -----------------
+  if (eq_class[0].mut_id[0] == 0){
+    char buf[1000];
+    sprintf(buf, " reduced:");
+
+    for (int eq_class_mut_id :  eq_class[0].mut_id){
+      sprintf(buf, "%s [%2d : %2ld]", buf, eq_class_mut_id, eq_class[0].value);
+    }
+    sprintf(buf, "%s\n", buf);
+    writeToLogFile("proc_tree", buf);
+
+    // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+#ifdef MUT_TOOL
+    writeToMutToolLogFile("proc_tree", buf);
+#endif
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+  }
+  // -------------- proc_tree: reduced in ori -----------------
+
   if (get_default_timer() != 0) {
     if (likely(MUTATION_ID != 0))
       accmut_disable_real_timer();
@@ -343,10 +370,17 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
           } else {
             sprintf(buf, "%s: /e", buf);
           }
+
+          sprintf(buf, "%s accmut::eq_class:", buf);
           for (int eq_class_mut_id :  eq_class[i].mut_id)
             sprintf(buf, "%s [%2d : %2ld]", buf, eq_class_mut_id, eq_class[i].value);
           sprintf(buf, "%s\n", buf);
           writeToLogFile("proc_tree", buf);
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+#ifdef MUT_TOOL
+          writeToMutToolLogFile("proc_tree", buf);
+#endif
+// ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
           // ------------- proc_tree -----------------
 
           if (WIFEXITED(status)) {

@@ -9,6 +9,9 @@
 #include <string>
 #include <unistd.h>
 
+#include <llvm/Transforms/WinMut/DebugMacro.h>
+#include <llvm/WinMutRuntime/logging/LogForMutTool.h>
+
 void (*exit_func)(int) = nullptr;
 void (*_exit_func)(int) = nullptr;
 int originalReturnVal = 0;
@@ -36,6 +39,18 @@ if (system_initialized() && !system_disabled()) {
   if (MUTATION_ID == 0)
     fflush(nullptr);
 }
+
+  // ------------ log ori exit value for mut tool to calculate mutation score -------------
+#ifdef MUT_TOOL
+  if (MUTATION_ID == 0){
+    char buf[1000];
+    sprintf(buf, "accmut::ori_exit_val: %d\n", __status);
+    writeToMutToolLogFile("proc_tree", buf);
+  }
+ 
+#endif
+// ------------ log ori exit value for mut tool to calculate mutation score -------------
+
   exit_func(__status);
   assert(false);
 }

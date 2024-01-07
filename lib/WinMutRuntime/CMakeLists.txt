@@ -14,6 +14,7 @@ add_link_options(-export-dynamic -Wl,--no-as-needed -ldl)
 add_llvm_library(LLVMWinMutRuntime SHARED
         ${_source_files}
         MutOutput.cpp
+        logging/LogForMutTool.cpp
         ADDITIONAL_HEADER_DIRS
         ${LLVM_MAIN_INCLUDE_DIR}/llvm/WinMutRuntime
         )
