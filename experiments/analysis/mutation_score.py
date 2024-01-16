@@ -503,37 +503,78 @@ class Run:
     
     def getRunStatJson(self):
         ret = {}
-        ret['Summary'] = {
-            'ms_k2g_min': self.runStat.ms_k2g_min,
-            'ms_k2c_min': self.runStat.ms_k2c_min,
-            'ms_k2g_med': self.runStat.ms_k2g_med,
-            'ms_k2c_med': self.runStat.ms_k2c_med,
-            'ms_k2g_max': self.runStat.ms_k2g_max,
-            'ms_k2c_max': self.runStat.ms_k2c_max,
-            'ms_k2g_avg': self.runStat.ms_k2g_avg,
-            'ms_k2c_avg': self.runStat.ms_k2c_avg,
-        }
+        ret['Summary'] = [
+            {
+                'label': 'ms_min',
+                'ms_k2g': self.runStat.ms_k2g_min,
+                'ms_k2c': self.runStat.ms_k2c_min,
+            },
+            {
+                'label': 'ms_med',
+                'ms_k2g': self.runStat.ms_k2g_med,
+                'ms_k2c': self.runStat.ms_k2c_med,
+            },
+            {
+                'label': 'ms_max',
+                'ms_k2g': self.runStat.ms_k2g_max,
+                'ms_k2c': self.runStat.ms_k2c_max,
+            },
+            {
+                'label': 'ms_avg',
+                'ms_k2g': self.runStat.ms_k2g_avg,
+                'ms_k2c': self.runStat.ms_k2c_avg,
+            },
+            
+            
+        ]
+
+        # ret['Summary'] = {
+        #     'ms_k2g_min': self.runStat.ms_k2g_min,
+        #     'ms_k2c_min': self.runStat.ms_k2c_min,
+        #     'ms_k2g_med': self.runStat.ms_k2g_med,
+        #     'ms_k2c_med': self.runStat.ms_k2c_med,
+        #     'ms_k2g_max': self.runStat.ms_k2g_max,
+        #     'ms_k2c_max': self.runStat.ms_k2c_max,
+        #     'ms_k2g_avg': self.runStat.ms_k2g_avg,
+        #     'ms_k2c_avg': self.runStat.ms_k2c_avg,
+        # }
 
         ret['MACases'] = {}
         for maCase in self.maCaseList:
             isinstance(maCase, MACase)
-            ret['MACases'][os.path.basename(maCase.case_dir)] = {
-                'case_name':                    maCase.case_name,
-                'generated':                    maCase.generated,
-                'killed':                       maCase.killed,
-                'uncovered':                    maCase.uncovered,
-                'covered':                      maCase.covered,
-                'ms_k2g':                       maCase.maCaseStat.ms_k2g,
-                'ms_k2c':                       maCase.maCaseStat.ms_k2c,
-                'killed_by_proc_output':        maCase.killed_by_proc_output,
-                'killed_by_proc_end_status':    maCase.killed_by_proc_end_status,
-                'killed_by_both':               maCase.killed_by_both,
-                'survived_not_affect_status':   maCase.survived_not_affect_status,
-                'survived_not_affect_output':   maCase.survived_not_affect_output,
-                'survived_by_both':             maCase.survived_by_both,
-                'survived_not_covered':         maCase.survived_not_covered,
+            ret['MACases'][os.path.basename(maCase.case_dir)] = [
+                {'label': 'case_name',                    'value': maCase.case_name,},
+                {'label': 'generated',                    'value': maCase.generated,},
+                {'label': 'killed',                       'value': maCase.killed,},
+                {'label': 'uncovered',                    'value': maCase.uncovered,},
+                {'label': 'covered',                      'value': maCase.covered,},
+                {'label': 'ms_k2g',                       'value': maCase.maCaseStat.ms_k2g,},
+                {'label': 'ms_k2c',                       'value': maCase.maCaseStat.ms_k2c,},
+                {'label': 'killed_by_proc_output',        'value': maCase.killed_by_proc_output,},
+                {'label': 'killed_by_proc_end_status',    'value': maCase.killed_by_proc_end_status,},
+                {'label': 'killed_by_both',               'value': maCase.killed_by_both,},
+                {'label': 'survived_not_affect_status',   'value': maCase.survived_not_affect_status,},
+                {'label': 'survived_not_affect_output',   'value': maCase.survived_not_affect_output,},
+                {'label': 'survived_by_both',             'value': maCase.survived_by_both,},
+                {'label': 'survived_not_covered',         'value': maCase.survived_not_covered,},
+            ]
+            # ret['MACases'][os.path.basename(maCase.case_dir)] = {
+            #     'case_name':                    maCase.case_name,
+            #     'generated':                    maCase.generated,
+            #     'killed':                       maCase.killed,
+            #     'uncovered':                    maCase.uncovered,
+            #     'covered':                      maCase.covered,
+            #     'ms_k2g':                       maCase.maCaseStat.ms_k2g,
+            #     'ms_k2c':                       maCase.maCaseStat.ms_k2c,
+            #     'killed_by_proc_output':        maCase.killed_by_proc_output,
+            #     'killed_by_proc_end_status':    maCase.killed_by_proc_end_status,
+            #     'killed_by_both':               maCase.killed_by_both,
+            #     'survived_not_affect_status':   maCase.survived_not_affect_status,
+            #     'survived_not_affect_output':   maCase.survived_not_affect_output,
+            #     'survived_by_both':             maCase.survived_by_both,
+            #     'survived_not_covered':         maCase.survived_not_covered,
 
-            }
+            # }
         return ret
 
     def initMACaseStatList(self, maCaseList):
