@@ -95,7 +95,7 @@ static void exit_time_printer() {
 
 // ------------ dump all mutaiont for mut tool to calculate mutation score -------------
 #ifdef DUMP_ALL_MUTATION
-  dump_all_mutation();
+  dump_all_mutation();  // 已弃用，改为在 register 时递增输出
 #endif
 // ------------ dump all mutaiont for mut tool to calculate mutation score -------------
 

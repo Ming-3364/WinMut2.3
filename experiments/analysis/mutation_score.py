@@ -60,8 +60,39 @@ class MACase:
 
         self.proc_tree = self.readProcTree(self.proc_tree_path)
 
-        
         self.cal_mutation_score()
+
+        self.initMACaseStat()
+
+    class MACaseStat:
+        # ms_k2g: mutation score: ratio of killed to generated mutants
+        # ms_k2c: mutation score: ratio of killed to   covered mutants
+        def __init__(self, case_dir, ms_k2g, ms_k2c) -> None:
+            self.case_dir = case_dir
+            self.ms_k2g = ms_k2g
+            self.ms_k2c = ms_k2c
+
+    def initMACaseStat(self):
+        self.generated = len(self.all_mutation) - 1
+        self.killed    = len(self.mutation_status_statistics_killed_set)
+        self.uncovered = len(self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_COVERED])
+        self.covered   = self.generated - self.uncovered
+
+        self.killed_by_proc_output = len(self.mutation_status_statistics[MutationStatus.KILLED_BY_PROC_OUTPUT])
+        self.killed_by_proc_end_status = len(self.mutation_status_statistics[MutationStatus.KILLED_BY_PROC_END_STATUS])
+        self.killed_by_both = len(self.mutation_status_statistics[MutationStatus.KILLED_BY_PROC_END_STATUS] & self.mutation_status_statistics[MutationStatus.KILLED_BY_PROC_OUTPUT])
+
+        self.survived_not_affect_status = len(self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_AFFECT_STATUS])
+        self.survived_not_affect_output = len(self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_AFFECT_OUTPUT])
+        self.survived_by_both = len(self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_AFFECT_OUTPUT] & self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_AFFECT_STATUS])
+        self.survived_not_covered = len(self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_COVERED])
+
+
+        assert (self.covered + self.uncovered == self.generated) and "check consistance in initMACaseStat\n"
+
+        ms_k2g = self.killed / self.generated
+        ms_k2c = self.killed / self.covered
+        self.maCaseStat = self.MACaseStat(self.case_dir, ms_k2g, ms_k2c)
 
     def cal_mutation_score(self):
         self.checkProcEndStatus()
@@ -103,6 +134,8 @@ class MACase:
                         break
                 self.classifyMutationStatus(mut_id, mutation)
         self.checkClassifyConsistency()
+
+        
     
     def classifyMutationStatus(self,mut_id,  mutation):
         # assert isinstance(mutation, Mutation) and "classifyMutationStatus: not a Mutation class\n"
@@ -139,8 +172,19 @@ class MACase:
                 == len(self.all_mutation) - 1
         
     def __str__(self) -> str:
+        print(self.case_dir)
         ret = self.case_name
-        ret += "\t" + f"mutation score: {self.killed_mutation_num}/{self.all_mutation_num}({self.killed_mutation_num / self.all_mutation_num *100:>.2f}%)"
+        if len(self.all_mutation) - 1 == 0 :    # 确实就是这么神奇（grep case_162）
+            ret += ": no mutation covered\n"
+            return ret
+
+        generated = len(self.all_mutation)
+        killed    = len(self.mutation_status_statistics_killed_set)
+        uncovered = len(self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_COVERED])
+        covered   = generated - uncovered
+
+        ret += "\n" + f"mutation score: {self.killed_mutation_num}/{self.all_mutation_num}({self.killed_mutation_num / self.all_mutation_num *100:>.2f}%)"
+        ret += "\n" + f"mutation score: {killed}/{covered}({killed / covered *100:>.2f}%)"
         ret += "\n"
 
         ret += "\t\t\t"
@@ -170,7 +214,7 @@ class MACase:
 
         ret += "\t\t\t"
         ret += f"SURVIVED_NOT_COVERED: {len(self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_COVERED])}"
-        ret += f" : {self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_COVERED]}"
+        # ret += f" : {self.mutation_status_statistics[MutationStatus.SURVIVED_NOT_COVERED]}"
         ret += "\n"
 
         ret += "\t\t\t"
@@ -237,7 +281,8 @@ class MACase:
 
 
     def isSameContent(self, file1_path, file2_path):
-        with open(file1_path, 'r') as file1, open(file2_path, 'r') as file2:
+        # print(file1_path, file2_path)
+        with open(file1_path, 'rb') as file1, open(file2_path, 'rb') as file2:  # 二进制打开对比，确实有不明原因的乱码，默认的utf-8无法识别
             content1 = file1.read()
             content2 = file2.read()
             return content1 == content2
@@ -379,17 +424,157 @@ def readCaseInRun(runlog_dir):
     return case_in_run
         
 
-def cal_mutation_score(runlog_dir):
-    case_in_run = readCaseInRun(runlog_dir)
-    for case_dir in case_in_run.values():
-        print(MACase(case_dir))
+# def cal_mutation_score(runlog_dir):
+#     error_list = []
+#     case_in_run = readCaseInRun(runlog_dir)
+#     for case_dir in case_in_run.values():
+#         try:
+#             print(MACase(case_dir))
+#         except Exception as e:
+#             error_list.append(case_dir)
+#             print("\033[91;1mError: \033[0m", case_dir)
+#     print(error_list)
     
-    
-    
+class Run:
+    def __init__(self, runlog_dir) -> None:
+        self.case_in_run = self.readCaseInRun(runlog_dir)
 
-try:
-    runlog_dir = sys.argv[1]
-    cal_mutation_score(runlog_dir)
+        self.maCaseList     = self.initMACaseList(self.case_in_run)
+        self.maCaseStatList = self.initMACaseStatList(self.maCaseList)
+
+        self.runStat = self.initRunStat(self.maCaseStatList)
+
+    class RunStat:
+        def __init__(self, case_num, 
+                     ms_k2g_min, ms_k2g_med, ms_k2g_max, ms_k2g_avg, 
+                     ms_k2c_min, ms_k2c_med, ms_k2c_max, ms_k2c_avg) -> None:
+            self.case_num = case_num
+            self.ms_k2g_min = ms_k2g_min
+            self.ms_k2g_med = ms_k2g_med
+            self.ms_k2g_max = ms_k2g_max
+            self.ms_k2g_avg = ms_k2g_avg
+            self.ms_k2c_min = ms_k2c_min
+            self.ms_k2c_med = ms_k2c_med
+            self.ms_k2c_max = ms_k2c_max
+            self.ms_k2c_avg = ms_k2c_avg
+
+
+        def __str__(self) -> str:
+            ret = f"In {self.case_num} cases: \n"
+            ret += "      min       \t      med       \t      max       \t      avg       \n"
+            ret += f"{self.ms_k2g_min * 100 :>6.2f}%({self.ms_k2c_min * 100 :>6.2f}%)"
+
+            ret += "\t"
+            ret += f"{self.ms_k2g_med * 100 :>6.2f}%({self.ms_k2c_med * 100 :>6.2f}%)"
+
+            ret += "\t"
+            ret += f"{self.ms_k2g_max * 100 :>6.2f}%({self.ms_k2c_max * 100 :>6.2f}%)"
+
+            ret += "\t"
+            ret += f"{self.ms_k2g_avg * 100 :>6.2f}%({self.ms_k2c_avg * 100 :>6.2f}%)"
+
+            ret += ""
+            return ret
+
+
+    def initRunStat(self, maCaseStatList):
+        sorted_by_ms_k2g = sorted(maCaseStatList, key=lambda x: x.ms_k2g)
+        sorted_by_ms_k2c = sorted(maCaseStatList, key=lambda x: x.ms_k2c)
+
+        ms_k2g_values = [case.ms_k2g for case in maCaseStatList]
+        ms_k2c_values = [case.ms_k2c for case in maCaseStatList]
+
+        ms_k2g_min = sorted_by_ms_k2g[0].ms_k2g
+        ms_k2g_max = sorted_by_ms_k2g[-1].ms_k2g
+        ms_k2g_med = sorted_by_ms_k2g[len(sorted_by_ms_k2g) // 2].ms_k2g
+        ms_k2g_avg = sum(ms_k2g_values) / len(ms_k2g_values)
+
+        ms_k2c_min = sorted_by_ms_k2c[0].ms_k2c
+        ms_k2c_max = sorted_by_ms_k2c[-1].ms_k2c
+        ms_k2c_med = sorted_by_ms_k2c[len(sorted_by_ms_k2c) // 2].ms_k2c
+        ms_k2c_avg = sum(ms_k2c_values) / len(ms_k2c_values)
+
+        return self.RunStat(len(maCaseStatList), 
+                            ms_k2g_min, ms_k2g_med, ms_k2g_max, ms_k2g_avg, 
+                            ms_k2c_min, ms_k2c_med, ms_k2c_max, ms_k2c_avg)
     
-except Exception as e:
-    traceback.print_exc(file=sys.stdout)
+    def getRunStat(self):
+        return self.runStat
+    
+    def getRunStatJson(self):
+        ret = {}
+        ret['Summary'] = {
+            'ms_k2g_min': self.runStat.ms_k2g_min,
+            'ms_k2c_min': self.runStat.ms_k2c_min,
+            'ms_k2g_med': self.runStat.ms_k2g_med,
+            'ms_k2c_med': self.runStat.ms_k2c_med,
+            'ms_k2g_max': self.runStat.ms_k2g_max,
+            'ms_k2c_max': self.runStat.ms_k2c_max,
+            'ms_k2g_avg': self.runStat.ms_k2g_avg,
+            'ms_k2c_avg': self.runStat.ms_k2c_avg,
+        }
+
+        ret['MACases'] = {}
+        for maCase in self.maCaseList:
+            isinstance(maCase, MACase)
+            ret['MACases'][os.path.basename(maCase.case_dir)] = {
+                'case_name':                    maCase.case_name,
+                'generated':                    maCase.generated,
+                'killed':                       maCase.killed,
+                'uncovered':                    maCase.uncovered,
+                'covered':                      maCase.covered,
+                'ms_k2g':                       maCase.maCaseStat.ms_k2g,
+                'ms_k2c':                       maCase.maCaseStat.ms_k2c,
+                'killed_by_proc_output':        maCase.killed_by_proc_output,
+                'killed_by_proc_end_status':    maCase.killed_by_proc_end_status,
+                'killed_by_both':               maCase.killed_by_both,
+                'survived_not_affect_status':   maCase.survived_not_affect_status,
+                'survived_not_affect_output':   maCase.survived_not_affect_output,
+                'survived_by_both':             maCase.survived_by_both,
+                'survived_not_covered':         maCase.survived_not_covered,
+
+            }
+        return ret
+
+    def initMACaseStatList(self, maCaseList):
+        maCaseStatList = []
+        for maCase in maCaseList:
+            assert isinstance(maCase, MACase)
+            maCaseStatList.append(maCase.maCaseStat)
+        return maCaseStatList
+
+    def initMACaseList(self, case_in_run):
+        maCaseList = []
+        error_list = []
+        for case_dir in case_in_run.values():
+            try:
+                maCase = MACase(case_dir)
+                print(maCase)
+                maCaseList.append(maCase)
+            except Exception as e:
+                error_list.append(case_dir)
+                print("\033[91;1mError: \033[0m", case_dir)
+        print(error_list)
+        # assert len(error_list) == 0 and "check error case list\n"
+        return maCaseList
+
+    def readCaseInRun(self, runlog_dir):
+        case_in_run = {}
+        items = os.listdir(runlog_dir)
+        items.sort()
+        for item in items:
+            item_path = os.path.join(runlog_dir, item)
+            assert os.path.isdir(item_path) and f"{item_path} not a case dir!\n"
+            case_in_run[item] = item_path
+        return case_in_run 
+
+if __name__ == '__main__':
+    try:
+        runlog_dir = sys.argv[1]
+        # cal_mutation_score(runlog_dir)
+        run = Run(runlog_dir)
+        print(run.getRunStat())
+
+        
+    except Exception as e:
+        traceback.print_exc(file=sys.stdout)

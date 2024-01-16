@@ -237,7 +237,7 @@ void MutationManager::filter_mutants(const goodvar_mutant_specs_type &depSpec,
 }
 int64_t MutationManager::fork_eqclass(const char *moduleName,
                                       const goodvar_mutant_specs_type &depSpec,
-                                      int offset) {
+                                      int offset) { 
   if (eq_num == 0) {
     ALWAYS_LOG("eq_num is 0");
     exit(-1);
@@ -434,11 +434,28 @@ void MutationManager::register_muts(RegMutInfo *rmi, BlockRegMutBound **bound,
                                     int boundnum, MutSpecs **specs,
                                     int specsnum, GoodvarArg **args,
                                     int argsnum) {
+    // writeToMutToolLogFile("all_mutation", "dump:");
+
   if (likely(rmi->isReg))
     return;
   rmi->isReg = 1;
   rmi->offset = all_mutation.size() - 1;
   all_mutation.insert(all_mutation.end(), rmi->ptr, rmi->ptr + rmi->num);
+
+  // ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+  // 将 all_mutation 设置为和 proc_tree 一样的递增式，原因见 grep case_185
+// #ifdef DUMP_ALL_MUTATION
+//     writeToMutToolLogFile("all_mutation", "dump:");
+
+//   for (int i = 0; i < rmi->num; ++i) {
+//     Mutation* m = (rmi->ptr + i);
+//     char buf[1000];
+//     sprintf(buf, "%d:%d:%d:%d:%d\n", m->type, m->sop, m->op_0, m->op_1, m->op_2);
+//     writeToMutToolLogFile("all_mutation", buf);
+//   }
+// #endif
+  // ------------ dump all mutaiont for mut tool to calculate mutation score -------------
+
   default_active_set.insert(default_active_set.end(), rmi->num, 1);
   for (int i = 0; i < boundnum; ++i) {
     bound[i]->left += rmi->offset;

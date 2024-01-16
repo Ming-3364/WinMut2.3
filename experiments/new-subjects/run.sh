@@ -67,6 +67,9 @@ collect-result() {
 		mkdir -p "${BASEDIR}"
 	fi
 	cp -r ${WINMUT_LOG_DIR} "${BASEDIR}/${ALGO}-${CURR_TIME}"
+	# ------- 为避免在保存了输出文件的情况下服务器炸，将文件备份后压缩 -----------
+	tar -czf ${BASEDIR}/${ALGO}-${CURR_TIME}/run.tar.gz -C ${BASEDIR}/${ALGO}-${CURR_TIME}/ run
+	rm -rf ${BASEDIR}/${ALGO}-${CURR_TIME}/run/
 }
 
 helpmsg() {

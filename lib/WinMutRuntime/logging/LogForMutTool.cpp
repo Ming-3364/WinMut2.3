@@ -9,11 +9,11 @@
 
 using namespace accmut;
 
+// HAVE TO DEFINE THIS TO MAKE TOOL OUTPUT WORK!!!
 void mkMutToolLogDir(int cur_case){
     const char* WINMUT_LOG_FILE_PREFIX = getLogFilePrefix();
     char buf[MAXPATHLEN];
     strcpy(buf, WINMUT_LOG_FILE_PREFIX);
-
     strcat(buf, "run"); // WINMUT_LOG_FILE_PREFIX/run
     if (! directory_exists(buf)) {
         __accmut_libc_mkdir(buf, 0777);
