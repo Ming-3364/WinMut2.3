@@ -152,7 +152,8 @@ namespace accmut{
     }
 
     void MutOutput::open_and_register_MutOutputFile(const char* filepath_ori, int fd, int flags, int mode){
-        if (flags & O_CREAT){ // 打开的文件是新创建的（不需要考虑读写位置）
+        // if (flags & O_CREAT){ // 打开的文件是新创建的（不需要考虑读写位置）
+        if (1){ // 打开的文件是新创建的（不需要考虑读写位置） 否，可能会引发问题
         
             // 登记 openedFile
             assert(openedFileSet.find(filepath_ori) == openedFileSet.end() 

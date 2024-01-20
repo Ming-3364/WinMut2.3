@@ -252,6 +252,7 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
   int64_t result = eq_class[0].value;
 
   // -------------- proc_tree: reduced in ori -----------------
+#ifdef PROC_TREE
   if (eq_class[0].mut_id[0] == 0){
     char buf[1000];
     sprintf(buf, " reduced:");
@@ -268,6 +269,7 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
 #endif
 // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
   }
+#endif
   // -------------- proc_tree: reduced in ori -----------------
 
   if (get_default_timer() != 0) {
@@ -360,6 +362,7 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
           int to = depSpec->mutSpecs[depSpec->totlength - 1].to;
                    
           // ------------- proc_tree -----------------
+#ifdef PROC_TREE
           sprintf(buf, "%2d=>%2d:%2d:%2d(%s-%2d)", MUTATION_ID, 
                       from, to, eq_class[i].mut_id[0], 
                       moduleName, eq_class[i].mut_id[0] - offset);
@@ -381,6 +384,7 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
           writeToMutToolLogFile("proc_tree", buf);
 #endif
 // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+#endif
           // ------------- proc_tree -----------------
 
           if (WIFEXITED(status)) {

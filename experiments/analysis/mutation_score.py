@@ -3,6 +3,7 @@ import traceback
 import os
 from enum import Enum, auto
 import re
+from math import exp, log, isclose
 
 class MutationStatus(Enum):
     KILLED_BY_PROC_OUTPUT = auto()          # 程序输出
@@ -446,22 +447,24 @@ class Run:
 
     class RunStat:
         def __init__(self, case_num, 
-                     ms_k2g_min, ms_k2g_med, ms_k2g_max, ms_k2g_avg, 
-                     ms_k2c_min, ms_k2c_med, ms_k2c_max, ms_k2c_avg) -> None:
+                     ms_k2g_min, ms_k2g_med, ms_k2g_max, ms_k2g_am, ms_k2g_gm,
+                     ms_k2c_min, ms_k2c_med, ms_k2c_max, ms_k2c_am, ms_k2c_gm) -> None:
             self.case_num = case_num
             self.ms_k2g_min = ms_k2g_min
             self.ms_k2g_med = ms_k2g_med
             self.ms_k2g_max = ms_k2g_max
-            self.ms_k2g_avg = ms_k2g_avg
+            self.ms_k2g_am = ms_k2g_am
+            self.ms_k2g_gm = ms_k2g_gm
             self.ms_k2c_min = ms_k2c_min
             self.ms_k2c_med = ms_k2c_med
             self.ms_k2c_max = ms_k2c_max
-            self.ms_k2c_avg = ms_k2c_avg
+            self.ms_k2c_am = ms_k2c_am
+            self.ms_k2c_gm = ms_k2c_gm
 
 
         def __str__(self) -> str:
             ret = f"In {self.case_num} cases: \n"
-            ret += "      min       \t      med       \t      max       \t      avg       \n"
+            ret += "      Min.      \t      Med.      \t      Max.      \t      A.M.      \t      G.M.      \n"
             ret += f"{self.ms_k2g_min * 100 :>6.2f}%({self.ms_k2c_min * 100 :>6.2f}%)"
 
             ret += "\t"
@@ -471,11 +474,28 @@ class Run:
             ret += f"{self.ms_k2g_max * 100 :>6.2f}%({self.ms_k2c_max * 100 :>6.2f}%)"
 
             ret += "\t"
-            ret += f"{self.ms_k2g_avg * 100 :>6.2f}%({self.ms_k2c_avg * 100 :>6.2f}%)"
+            ret += f"{self.ms_k2g_am * 100 :>6.2f}%({self.ms_k2c_am * 100 :>6.2f}%)"
+
+            ret += "\t"
+            ret += f"{self.ms_k2g_gm * 100 :>6.2f}%({self.ms_k2c_gm * 100 :>6.2f}%)"
 
             ret += ""
             return ret
 
+    def geometric_mean(self, arr):
+        if not arr:
+            return None  # 处理空数组的情况，你可以根据实际需求返回适当的值
+
+        product = 1
+        non_zero_arr = [num for num in arr if not isclose(num, 0)]
+
+        if not non_zero_arr:
+            return 0
+        for num in non_zero_arr:
+            product *= num
+
+        geometric_mean_value = exp(log(product) / len(non_zero_arr))
+        return geometric_mean_value
 
     def initRunStat(self, maCaseStatList):
         sorted_by_ms_k2g = sorted(maCaseStatList, key=lambda x: x.ms_k2g)
@@ -487,16 +507,18 @@ class Run:
         ms_k2g_min = sorted_by_ms_k2g[0].ms_k2g
         ms_k2g_max = sorted_by_ms_k2g[-1].ms_k2g
         ms_k2g_med = sorted_by_ms_k2g[len(sorted_by_ms_k2g) // 2].ms_k2g
-        ms_k2g_avg = sum(ms_k2g_values) / len(ms_k2g_values)
+        ms_k2g_am = sum(ms_k2g_values) / len(ms_k2g_values)
+        ms_k2g_gm = self.geometric_mean(ms_k2g_values)
 
         ms_k2c_min = sorted_by_ms_k2c[0].ms_k2c
         ms_k2c_max = sorted_by_ms_k2c[-1].ms_k2c
         ms_k2c_med = sorted_by_ms_k2c[len(sorted_by_ms_k2c) // 2].ms_k2c
-        ms_k2c_avg = sum(ms_k2c_values) / len(ms_k2c_values)
+        ms_k2c_am = sum(ms_k2c_values) / len(ms_k2c_values)
+        ms_k2c_gm = self.geometric_mean(ms_k2c_values)
 
         return self.RunStat(len(maCaseStatList), 
-                            ms_k2g_min, ms_k2g_med, ms_k2g_max, ms_k2g_avg, 
-                            ms_k2c_min, ms_k2c_med, ms_k2c_max, ms_k2c_avg)
+                            ms_k2g_min, ms_k2g_med, ms_k2g_max, ms_k2g_am, ms_k2g_gm,
+                            ms_k2c_min, ms_k2c_med, ms_k2c_max, ms_k2c_am, ms_k2c_gm)
     
     def getRunStat(self):
         return self.runStat
@@ -504,27 +526,51 @@ class Run:
     def getRunStatJson(self):
         ret = {}
         ret['Summary'] = [
+            # {
+            #     'label': 'ms_min',
+            #     'ms_k2g': self.runStat.ms_k2g_min,
+            #     'ms_k2c': self.runStat.ms_k2c_min,
+            # },
+            # {
+            #     'label': 'ms_med',
+            #     'ms_k2g': self.runStat.ms_k2g_med,
+            #     'ms_k2c': self.runStat.ms_k2c_med,
+            # },
+            # {
+            #     'label': 'ms_max',
+            #     'ms_k2g': self.runStat.ms_k2g_max,
+            #     'ms_k2c': self.runStat.ms_k2c_max,
+            # },
+            # {
+            #     'label': 'ms_avg',
+            #     'ms_k2g': self.runStat.ms_k2g_avg,
+            #     'ms_k2c': self.runStat.ms_k2c_avg,
+            # },
             {
-                'label': 'ms_min',
-                'ms_k2g': self.runStat.ms_k2g_min,
-                'ms_k2c': self.runStat.ms_k2c_min,
+                'label': 'Min.',
+                'ms_k2g': f"{self.runStat.ms_k2g_min * 100 :>6.2f}%",
+                'ms_k2c': f"{self.runStat.ms_k2c_min * 100 :>6.2f}%",
             },
             {
-                'label': 'ms_med',
-                'ms_k2g': self.runStat.ms_k2g_med,
-                'ms_k2c': self.runStat.ms_k2c_med,
+                'label': 'Med.',
+                'ms_k2g': f"{self.runStat.ms_k2g_med * 100 :>6.2f}%",
+                'ms_k2c': f"{self.runStat.ms_k2c_med * 100 :>6.2f}%",
             },
             {
-                'label': 'ms_max',
-                'ms_k2g': self.runStat.ms_k2g_max,
-                'ms_k2c': self.runStat.ms_k2c_max,
+                'label': 'Max.',
+                'ms_k2g': f"{self.runStat.ms_k2g_max * 100 :>6.2f}%",
+                'ms_k2c': f"{self.runStat.ms_k2c_max * 100 :>6.2f}%",
             },
             {
-                'label': 'ms_avg',
-                'ms_k2g': self.runStat.ms_k2g_avg,
-                'ms_k2c': self.runStat.ms_k2c_avg,
+                'label': 'A.M.',
+                'ms_k2g': f"{self.runStat.ms_k2g_am * 100 :>6.2f}%",
+                'ms_k2c': f"{self.runStat.ms_k2c_am * 100 :>6.2f}%",
             },
-            
+            {
+                'label': 'G.M.',
+                'ms_k2g': f"{self.runStat.ms_k2g_gm * 100 :>6.2f}%",
+                'ms_k2c': f"{self.runStat.ms_k2c_gm * 100 :>6.2f}%",
+            },
             
         ]
 
@@ -540,6 +586,7 @@ class Run:
         # }
 
         ret['MACases'] = {}
+        self.maCaseList = sorted(self.maCaseList, key=lambda x: int(os.path.basename(x.case_dir ).strip().split('_')[1]))
         for maCase in self.maCaseList:
             isinstance(maCase, MACase)
             ret['MACases'][os.path.basename(maCase.case_dir)] = [
@@ -548,8 +595,8 @@ class Run:
                 {'label': 'killed',                       'value': maCase.killed,},
                 {'label': 'uncovered',                    'value': maCase.uncovered,},
                 {'label': 'covered',                      'value': maCase.covered,},
-                {'label': 'ms_k2g',                       'value': maCase.maCaseStat.ms_k2g,},
-                {'label': 'ms_k2c',                       'value': maCase.maCaseStat.ms_k2c,},
+                {'label': 'ms_k2g',                       'value': f"{maCase.maCaseStat.ms_k2g * 100 :>6.2f}%",},
+                {'label': 'ms_k2c',                       'value': f"{maCase.maCaseStat.ms_k2c * 100 :>6.2f}%",},
                 {'label': 'killed_by_proc_output',        'value': maCase.killed_by_proc_output,},
                 {'label': 'killed_by_proc_end_status',    'value': maCase.killed_by_proc_end_status,},
                 {'label': 'killed_by_both',               'value': maCase.killed_by_both,},
@@ -602,7 +649,7 @@ class Run:
     def readCaseInRun(self, runlog_dir):
         case_in_run = {}
         items = os.listdir(runlog_dir)
-        items.sort()
+        items = sorted(items, key=lambda x: int(x.split('_')[1]))
         for item in items:
             item_path = os.path.join(runlog_dir, item)
             assert os.path.isdir(item_path) and f"{item_path} not a case dir!\n"

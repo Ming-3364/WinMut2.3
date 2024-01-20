@@ -46,10 +46,14 @@ static std::string get_print_line(const char *prefix) {
 }
 static void print_time_line(const char *prefix) {
   for (const auto *filename :
-       {"forked", "forked-simple", "timing", "timeout", "panic", "trace", "proc_tree"}) 
+       {"forked", "forked-simple", "timing", "timeout", "panic", "trace"}) 
   {
     writeToLogFile(filename, get_print_line(prefix).c_str());
   }
+
+#ifdef PROC_TREE
+  writeToLogFile("proc_tree", get_print_line(prefix).c_str());
+#endif
 
   // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
 #ifdef MUT_TOOL
