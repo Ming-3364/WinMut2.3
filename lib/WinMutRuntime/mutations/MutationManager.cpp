@@ -254,7 +254,7 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
   // -------------- proc_tree: reduced in ori -----------------
 #ifdef PROC_TREE
   if (eq_class[0].mut_id[0] == 0){
-    char buf[1000];
+    char buf[2000];
     sprintf(buf, " reduced:");
 
     for (int eq_class_mut_id :  eq_class[0].mut_id){
@@ -363,25 +363,26 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
                    
           // ------------- proc_tree -----------------
 #ifdef PROC_TREE
-          sprintf(buf, "%2d=>%2d:%2d:%2d(%s-%2d)", MUTATION_ID, 
+          char buf1[2000];
+          sprintf(buf1, "%2d=>%2d:%2d:%2d(%s-%2d)", MUTATION_ID, 
                       from, to, eq_class[i].mut_id[0], 
                       moduleName, eq_class[i].mut_id[0] - offset);
           if (WIFEXITED(status)) {
-            sprintf(buf, "%s: /r%2d", buf, WEXITSTATUS(status));
+            sprintf(buf1, "%s: /r%2d", buf1, WEXITSTATUS(status));
           } else if (WIFSIGNALED(status)) {
-            sprintf(buf, "%s: /s%2d", buf, WTERMSIG(status));
+            sprintf(buf1, "%s: /s%2d", buf1, WTERMSIG(status));
           } else {
-            sprintf(buf, "%s: /e", buf);
+            sprintf(buf1, "%s: /e", buf1);
           }
 
-          sprintf(buf, "%s accmut::eq_class:", buf);
+          sprintf(buf1, "%s accmut::eq_class:", buf1);
           for (int eq_class_mut_id :  eq_class[i].mut_id)
-            sprintf(buf, "%s [%2d : %2ld]", buf, eq_class_mut_id, eq_class[i].value);
-          sprintf(buf, "%s\n", buf);
-          writeToLogFile("proc_tree", buf);
+            sprintf(buf1, "%s [%2d : %2ld]", buf1, eq_class_mut_id, eq_class[i].value);
+          sprintf(buf1, "%s\n", buf1);
+          writeToLogFile("proc_tree", buf1);
 // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
 #ifdef MUT_TOOL
-          writeToMutToolLogFile("proc_tree", buf);
+          writeToMutToolLogFile("proc_tree", buf1);
 #endif
 // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
 #endif

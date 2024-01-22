@@ -2,6 +2,7 @@
 #include <llvm/WinMutRuntime/filesystem/LibCAPI.h>
 #include <llvm/WinMutRuntime/mutations/MutationIDDecl.h>
 #include <llvm/Transforms/WinMut/DebugMacro.h>
+#include <llvm/WinMutRuntime/logging/LogFilePrefix.h>
 #include <llvm/WinMutRuntime/logging/LogForMutTool.h>
 
 #include <fcntl.h>
@@ -111,7 +112,7 @@ namespace accmut{
     // }
 
     const char* getMutOutputFilePath(const char* filepath_str, int mut_id, char* buf){
-        char filename[1024];
+        char filename[2048];
         size_t length = strlen(filepath_str);
         int i = 0;
         for (; i < length; ++i){
@@ -135,14 +136,21 @@ namespace accmut{
     int MutOutput::open_stdoutcopy(){
         // 登记 openedFile
         const char* filepath_ori = "stdoutcopy";
-        assert(openedFileSet.find(filepath_ori) == openedFileSet.end() && MUTATION_ID == 0
-                && "open_and_register_MutOutputFile : file reopen\n");
+        // assert(openedFileSet.find(filepath_ori) == openedFileSet.end() && MUTATION_ID == 0
+        //         && "open_stdoutcopy : file reopen\n");
+        if (openedFileSet.find(filepath_ori) != openedFileSet.end()){
+            ERROR_MUT_TOOL("open_stdoutcopy : file reopen\n");
+        }
+
         char buf[1000];
         const char* filepath_mut = getMutOutputFilePath(filepath_ori, MUTATION_ID, buf);
         int fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
         if (fd == -1) {
-            perror("无法打开文件");
-            exit(EXIT_FAILURE);
+            // perror("无法打开文件");
+            // exit(EXIT_FAILURE);
+
+            ERROR_MUT_TOOL("open_stdoutcopy: fail to open file\n");
+            return -1;
         }
         openedFileMap_fd2path[fd] = filepath_ori;
         openedFileMap_path2fd[filepath_ori] = fd;
@@ -155,21 +163,31 @@ namespace accmut{
         // if (flags & O_CREAT){ // 打开的文件是新创建的（不需要考虑读写位置）
         if (1){ // 打开的文件是新创建的（不需要考虑读写位置） 否，可能会引发问题
         
-            // 登记 openedFile
-            assert(openedFileSet.find(filepath_ori) == openedFileSet.end() 
-                   && "open_and_register_MutOutputFile : file reopen\n");
-            openedFileMap_fd2path[fd] = filepath_ori;
-            openedFileMap_path2fd[filepath_ori] = fd;
-            openedFileSet.insert(filepath_ori);
+            // // 登记 openedFile
+            // assert(openedFileSet.find(filepath_ori) == openedFileSet.end() 
+            //        && "open_and_register_MutOutputFile : file reopen\n");
+            if (openedFileSet.find(filepath_ori) != openedFileSet.end()){
+                ERROR_MUT_TOOL("open_and_register_MutOutputFile : file reopen\n");
+            }
+
+            // openedFileMap_fd2path[fd] = filepath_ori;
+            // openedFileMap_path2fd[filepath_ori] = fd;
+            // openedFileSet.insert(filepath_ori);
 
             if (MUTATION_ID == 0){
                 char buf[1024];
                 const char* filepath_mut = getMutOutputFilePath(filepath_ori, MUTATION_ID, buf);
                 int MutOutputFile_fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
                 if (MutOutputFile_fd == -1) {
-                    perror("无法打开文件");
-                    exit(EXIT_FAILURE);
+                    // perror("无法打开文件");
+                    // exit(EXIT_FAILURE);
+
+                    ERROR_MUT_TOOL("open_and_register_MutOutputFile: fail to open file\n");
+                    return;
                 }
+                openedFileMap_fd2path[fd] = filepath_ori;
+                openedFileMap_path2fd[filepath_ori] = fd;
+                openedFileSet.insert(filepath_ori);
                 openedMutOutputFile[MUTATION_ID][filepath_ori] = MutOutputFile_fd;
             }
             else {  // 在子进程中需要为所有携带的变异创建
@@ -178,12 +196,18 @@ namespace accmut{
                     const char* filepath_mut = getMutOutputFilePath(filepath_ori, mut_id, buf);
                     int MutOutputFile_fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
                     if (MutOutputFile_fd == -1) {
-                        perror("无法打开文件");
-                        exit(EXIT_FAILURE);
+                        // perror("无法打开文件");
+                        // exit(EXIT_FAILURE);
+
+                        ERROR_MUT_TOOL("fail to open file\n");
+                        return;
                     }
                     openedMutOutputFile[mut_id][filepath_ori] = MutOutputFile_fd;
 
                 }
+                openedFileMap_fd2path[fd] = filepath_ori;
+                openedFileMap_path2fd[filepath_ori] = fd;
+                openedFileSet.insert(filepath_ori);
             }
             
         }
@@ -204,8 +228,13 @@ namespace accmut{
             // 2. 在执行 fork 前剔除需要自立门户的 mut_output
             for (int mut_id : mut_id_need_remove){
                 auto it = std::find(eq_class_mut_id.begin(), eq_class_mut_id.end(),mut_id);
-                assert( it != eq_class_mut_id.end() 
-                    && "prepare_copy : Try removing an ID that doesn't exist\n");
+                // assert( it != eq_class_mut_id.end() 
+                //     && "prepare_copy : Try removing an ID that doesn't exist\n");
+                if (it == eq_class_mut_id.end()){
+                    ERROR_MUT_TOOL("prepare_copy : Try removing an ID that doesn't exist\n");
+                    return;
+                }
+
                 eq_class_mut_id.erase(it);
             }
         }
@@ -281,19 +310,24 @@ namespace accmut{
         ssize_t bytesRead, bytesWritten;
         destinationFd = __accmut_libc_open(destinationPath, O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
         if (destinationFd == -1) {
-            perror("Error opening destination file");
-            close(sourceFd);
-            return EXIT_FAILURE;
+            // perror("Error opening destination file");
+            // close(sourceFd);
+            // return EXIT_FAILURE;
+            ERROR_MUT_TOOL("copy_MutOutputFile: Error opening destination file\n");
+            return -1;
         }
         // 从源文件读取并写入目标文件
         __accmut_libc_lseek(sourceFd, 0, SEEK_SET); // 从头读取
         while ((bytesRead = __accmut_libc_read(sourceFd, buffer, sizeof(buffer))) > 0) {
             bytesWritten = __accmut_libc_write(destinationFd, buffer, bytesRead);
             if (bytesWritten != bytesRead) {
-                perror("Error writing to destination file");
-                close(sourceFd);
+                // perror("Error writing to destination file");
+                // close(sourceFd);
+                // close(destinationFd);
+                // return EXIT_FAILURE;
+                ERROR_MUT_TOOL("copy_MutOutputFile: Error writing to destination file\n");
                 close(destinationFd);
-                return EXIT_FAILURE;
+                return -1;
             }
         }
 
