@@ -6,6 +6,9 @@ import re
 from math import exp, log, isclose
 
 from tqdm import tqdm
+import pickle
+import numpy as np
+
 
 class MutationStatus(Enum):
     KILLED_BY_PROC_OUTPUT = auto()          # 程序输出
@@ -59,13 +62,39 @@ class MACase:
         self.all_mutation_path = os.path.join(case_dir, "all_mutation")
         self.proc_tree_path    = os.path.join(case_dir, "proc_tree")
 
-        self.all_mutation = self.getAllMutation(self.all_mutation_path)
+        self.result_path       = os.path.join(case_dir, "MACase.pkl")
+        self.load_or_initialize()
 
-        self.proc_tree = self.readProcTree(self.proc_tree_path)
+    def load_or_initialize(self):
+        try:
+            with open(self.result_path, 'rb') as file:
+                loaded_instance = pickle.load(file)
+            self.__dict__.update(loaded_instance.__dict__)
+        except (FileNotFoundError, pickle.UnpicklingError):
 
-        self.cal_mutation_score()
+            # self.check_file_size()
 
-        self.initMACaseStat()
+            self.all_mutation = self.getAllMutation(self.all_mutation_path)
+            self.proc_tree = self.readProcTree(self.proc_tree_path)
+            self.cal_mutation_score()
+            self.initMACaseStat()
+
+            self.save_instance()
+    
+    def check_file_size(self, max_size_gb=30):
+        # 获取文件大小（以字节为单位）
+        file_size_bytes = os.path.getsize(self.proc_tree)
+        
+        # 将字节转换为GB
+        file_size_gb = file_size_bytes / (1024 ** 3)
+        
+        # 检查文件大小是否超过指定的最大大小
+        if file_size_gb > max_size_gb:
+            raise Exception(f"The file size ({file_size_gb:.2f} GB) exceeds the maximum allowed size of {max_size_gb} GB.")
+
+    def save_instance(self):
+        with open(self.result_path, 'wb') as file:
+            pickle.dump(self, file)
 
     class MACaseStat:
         # ms_k2g: mutation score: ratio of killed to generated mutants
@@ -445,7 +474,7 @@ class Run:
         self.case_in_run = self.readCaseInRun(runlog_dir)
 
         self.maCaseList     = self.initMACaseList(self.case_in_run)
-        self.maCaseStatList = self.initMACaseStatList(self.maCaseList)
+        # self.maCaseStatList = self.initMACaseStatList(self.maCaseList)
 
         self.runStat = self.initRunStat(self.maCaseStatList)
 
@@ -495,11 +524,23 @@ class Run:
 
         if not non_zero_arr:
             return 0
-        for num in non_zero_arr:
-            product *= num
+        # 将非零数取对数
+        log_numbers = [log(x) for x in non_zero_arr]
 
-        geometric_mean_value = exp(log(product) / len(non_zero_arr))
+        # 计算对数平均值
+        log_mean = sum(log_numbers) / len(log_numbers)
+
+        # 将对数平均值转换回原始尺度
+        geometric_mean_value = exp(log_mean)
         return geometric_mean_value
+    
+        # for num in non_zero_arr:
+        #     print(num, product)
+        #     product *= num
+
+        # print(product, len(non_zero_arr))
+        # geometric_mean_value = exp(log(product) / len(non_zero_arr))
+        # return geometric_mean_value
 
     def initRunStat(self, maCaseStatList):
         sorted_by_ms_k2g = sorted(maCaseStatList, key=lambda x: x.ms_k2g)
@@ -638,11 +679,15 @@ class Run:
     def initMACaseList(self, case_in_run):
         maCaseList = []
         error_list = []
+
+        self.maCaseStatList = []
         for case_dir in case_in_run.values():
             try:
                 maCase = MACase(case_dir)
                 print(maCase)
-                maCaseList.append(maCase)
+                sys.stdout.flush()
+                # maCaseList.append(maCase)
+                self.maCaseStatList.append(maCase.maCaseStat)
             except Exception as e:
                 error_list.append(case_dir)
                 print("\033[91;1mError: \033[0m", case_dir)
