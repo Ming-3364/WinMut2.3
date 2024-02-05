@@ -29,6 +29,8 @@
 #endif
 // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
 
+#include <llvm/WinMutRuntime/accel-sysio.h>
+
 extern "C" {
 extern void init_stdio();
 }
@@ -244,6 +246,11 @@ if (mcheck(abort_func) < 0) {
 #endif
   // ------------------- mut output for demo site ---------------------
   
+  // ------------ log original sysio call -------------
+  #ifdef LOG_SYSIO_CALL
+  #endif
+  // ------------ log original sysio call -------------
+
   bool panic = false;
 
   long usecmin = std::numeric_limits<long>::max();
@@ -264,6 +271,14 @@ if (mcheck(abort_func) < 0) {
     }
 
     if (pid == 0) {
+      // ------------ log original sysio call -------------
+      #ifdef LOG_SYSIO_CALL
+        startOrinalLog();
+        resetOrinalLog(i);
+        writeToMutToolLogFile("fork_debug", "forked");
+      #endif
+      // ------------ log original sysio call -------------
+
       MUTATION_ID = std::numeric_limits<int>::max();
       accmut::MirrorFileSystem::getInstance()->setVirtual();
       accmut::OpenFileTable::getInstance()->setVirtual();
@@ -273,6 +288,7 @@ if (mcheck(abort_func) < 0) {
       }
       i = measure_times;
     } else {
+
       if (i == 0) {
         __accmut_libc_close(fd[1]);
         MessageHdr hdr;
@@ -310,6 +326,11 @@ if (mcheck(abort_func) < 0) {
 
       int status;
       int r = waitpid(pid, &status, 0);
+      // ------------ log original sysio call -------------
+      #ifdef LOG_SYSIO_CALL
+        endOrinalLog();
+      #endif
+      // ------------ log original sysio call -------------
       if (r < 0) {
         __accmut_libc_perror("waitpid");
         exit(-1);
@@ -349,6 +370,11 @@ if (mcheck(abort_func) < 0) {
       }
     }
   }
+  // ------------ log original sysio call -------------
+  #ifdef LOG_SYSIO_CALL
+  readOriginalLog();
+  #endif
+  // ------------ log original sysio call -------------
 }
 extern "C" {
 extern void reset_stdio();

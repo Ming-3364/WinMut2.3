@@ -13,6 +13,13 @@
 // 为 run 的每一次 case 输出 all_mutation
 #define DUMP_ALL_MUTATION
 
+// 记录系统io库调用
+// #define LOG_SYSIO_CALL
+
+// 弱变异：影响程序输出的变异
+// 通过静态分析提前结束对输出结果不同的进程（不进行fork）
+#define STATIC_ANA_FOR_WEAK_MUTATION
+
 
 #define NOT_IMPLEMENTED() \
     do { \

@@ -4,6 +4,7 @@ import os
 from enum import Enum, auto
 import re
 from math import exp, log, isclose
+import traceback
 
 class MutationStatus(Enum):
     KILLED_BY_PROC_OUTPUT = auto()          # 程序输出
@@ -41,13 +42,14 @@ class ProcEndStatus(Enum):
     SAME_WITH_ORI = auto()
     EXITED = auto()
     SIGNALED = auto()
+    KILLED_BY_STRONG_MUTATION_DETERMINATION = auto()
 
 class ProcTreeNode:
     # TODO: mut_id_list 使用数组，或许可以换种高级方式
     def __init__(self, eq_class_tuple_list, proc_end_status, proc_exit_or_signal_val=0):
         self.eq_class_tuple_list = eq_class_tuple_list
         self.proc_end_status = proc_end_status
-        if proc_end_status != ProcEndStatus.SAME_WITH_ORI:
+        if proc_end_status == ProcEndStatus.SIGNALED or proc_end_status == ProcEndStatus.EXITED:
             self.proc_exit_or_signal_val = proc_exit_or_signal_val
 
 # MA : mutation analysis
@@ -245,6 +247,13 @@ class MACase:
 
                     # self.getProcFromEqClass(eq_class_reduced_tuple_list, ProcEndStatus.SAME_WITH_ORI)
                     proc_tree.append(ProcTreeNode(eq_class_reduced_tuple_list, ProcEndStatus.SAME_WITH_ORI))
+                elif l.startswith("killed"):            # killed by strong mutation determination
+                    eq_class_killed_str = l.split("accmut::eq_class:")[1].strip()
+                    eq_class_killed_tuple_list = self.getEqClass(eq_class_killed_str)
+                    # print(l)
+                    # print(eq_class_reduced_str, eq_class_reduced_tuple_list)
+                    proc_tree.append(ProcTreeNode(eq_class_killed_tuple_list, ProcEndStatus.KILLED_BY_STRONG_MUTATION_DETERMINATION))
+
                 else:
                     assert l[0] in '0123456789' and f"{l} not a proc\n"
                     fork_from = int(l.split("=>")[0].strip())
@@ -326,9 +335,12 @@ class MACase:
                 if mut_id != 0:
                     assert isinstance(self.all_mutation[mut_id], Mutation) and "checkProcEndStatus: not a Mutation class\n"
                     self.all_mutation[mut_id].not_covered = False
+                    # print("covered: ", mut_id)
 
                     if self.isSameProcEndStatusWithOri(proc) or proc_end_status == ProcEndStatus.SAME_WITH_ORI:
                         self.all_mutation[mut_id].mutation_status.append(MutationStatus.SURVIVED_NOT_AFFECT_STATUS)
+                    elif proc_end_status == ProcEndStatus.KILLED_BY_STRONG_MUTATION_DETERMINATION:
+                        self.all_mutation[mut_id].mutation_status.append(MutationStatus.KILLED_BY_PROC_OUTPUT)
                     else:
                         self.all_mutation[mut_id].mutation_status.append(MutationStatus.KILLED_BY_PROC_END_STATUS)
 
@@ -642,6 +654,7 @@ class Run:
             except Exception as e:
                 error_list.append(case_dir)
                 print("\033[91;1mError: \033[0m", case_dir)
+                traceback.print_exc(file=sys.stdout)
         print(error_list)
         # assert len(error_list) == 0 and "check error case list\n"
         return maCaseList

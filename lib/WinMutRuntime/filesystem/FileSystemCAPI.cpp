@@ -24,6 +24,8 @@
 #include <llvm/WinMutRuntime/filesystem/MutOutput.h>
 // ------------------- mut output for demo site ---------------------
 
+#include <llvm/WinMutRuntime/accel-sysio.h>
+
 // #define LOGGING
 
 using namespace accmut;
@@ -1151,9 +1153,14 @@ off_t lseek64(int fd, off_t offset, int whence) {
 off_t lseek(int fd, off_t offset, int whence) {
   return LogTheFunc<int>(
              [&]() {
+              #ifdef LOG_SYSIO_CALL
+                if(isOrinalLogging())
+                  logSysioOfOrinal_lseek(offset, whence);
+              #endif
                ErrnoSetter errnoSetter;
-               if (unlikely(system_disabled()))
+               if (unlikely(system_disabled())){
                  return __accmut_libc_lseek(fd, offset, whence);
+               }
                if (unlikely(!system_initialized())) {
                  disable_system();
                  return __accmut_libc_lseek(fd, offset, whence);
@@ -1164,6 +1171,12 @@ off_t lseek(int fd, off_t offset, int whence) {
 
                std::error_code err;
                off_t ret = oft->lseek(fd, offset, whence, err);
+               // ------------------- check sysio log -----------------------
+                #ifdef LOG_SYSIO_CALL
+                if (MUTATION_ID != 0 && !isOrinalLogging())
+                  checkSysioOfMutant_lseek(offset, whence);
+                #endif
+                // ------------------- check sysio log -----------------------
 
                if (oft->isReal()) {
                  errno = 0;
@@ -1218,8 +1231,13 @@ int open(const char *pathname, int flags, ...) {
   }
   return LogTheFunc<int>(
              [&]() {
-               if (unlikely(system_disabled()))
+                #ifdef LOG_SYSIO_CALL
+                if(isOrinalLogging)
+                  logSysioOfOrinal_open(pathname, flags, mode);
+                 #endif
+               if (unlikely(system_disabled())){
                  return __accmut_libc_open(pathname, flags, mode);
+               }
                if (unlikely(!system_initialized())) {
                  disable_system();
                  return __accmut_libc_open(pathname, flags, mode);
@@ -1232,6 +1250,12 @@ int open(const char *pathname, int flags, ...) {
                 accmut::MutOutput::getInstance()->open_and_register_MutOutputFile(pathname, fd, flags, mode);
 #endif
                 // ------------------- mut output for demo site ---------------------
+                // ------------------- check sysio log -----------------------
+                #ifdef LOG_SYSIO_CALL
+                if (MUTATION_ID != 0 && !isOrinalLogging())
+                  checkSysioOfMutant_open(pathname, flags, mode);
+                #endif
+                // ------------------- check sysio log -----------------------
                return fd;
              },
              "open", pathname, flags, mode)
@@ -1320,9 +1344,15 @@ int openat64(int dirfd, const char *pathname, int flags, ...) {
 ssize_t read(int fd, void *buf, size_t count) {
   return LogTheFunc<ssize_t>(
              [&]() -> ssize_t {
+               #ifdef LOG_SYSIO_CALL
+              if(isOrinalLogging)
+                 logSysioOfOrinal_read(count);
+               #endif
                ErrnoSetter errnoSetter;
-               if (unlikely(system_disabled()))
+               if (unlikely(system_disabled())){
+                 
                  return __accmut_libc_read(fd, buf, count);
+               }
                if (unlikely(!system_initialized())) {
                  disable_system();
                  return __accmut_libc_read(fd, buf, count);
@@ -1333,8 +1363,13 @@ ssize_t read(int fd, void *buf, size_t count) {
 
                std::error_code err;
                if (oft->shouldOrigin(fd)) {
+                // ------------------- check sysio log -----------------------
+                #ifdef LOG_SYSIO_CALL
+                if (MUTATION_ID != 0 && !isOrinalLogging())
+                  checkSysioOfMutant_read(count);
+                #endif
+                // ------------------- check sysio log -----------------------
                  ssize_t ret = oft->read(fd, buf, count, err);
-
                  if (oft->isReal()) {
                    const int smallbufSize = 4096;
                    char smallbuf[smallbufSize];
@@ -1388,9 +1423,16 @@ ssize_t read(int fd, void *buf, size_t count) {
 ssize_t write(int fd, const void *buf, size_t count) {
   return LogTheFunc<ssize_t>(
              [&]() -> ssize_t {
+              #ifdef LOG_SYSIO_CALL
+              if(isOrinalLogging())
+
+                logSysioOfOrinal_write((const char *)buf, count);
+              #endif
                ErrnoSetter errnoSetter;
-               if (unlikely(system_disabled()))
+               if (unlikely(system_disabled())){
+                 
                  return __accmut_libc_write(fd, buf, count);
+               }
                if (unlikely(!system_initialized())) {
                  disable_system();
                  return __accmut_libc_write(fd, buf, count);
@@ -1421,6 +1463,12 @@ ssize_t write(int fd, const void *buf, size_t count) {
                   accmut::MutOutput::getInstance()->write_registered_MutOutputFile(fd, buf, count);
 #endif
                   // ------------------- mut output for demo site ---------------------
+                  // ------------------- check sysio log -----------------------
+                  #ifdef LOG_SYSIO_CALL
+                if (MUTATION_ID != 0 && !isOrinalLogging())
+                    checkSysioOfMutant_write((const char*)buf, count);
+                  #endif
+                  // ------------------- check sysio log -----------------------
 
                  ssize_t ret = oft->write(fd, buf, count, err);
                  if (oft->isReal()) {
@@ -1442,6 +1490,12 @@ ssize_t write(int fd, const void *buf, size_t count) {
                     accmut::MutOutput::getInstance()->write_registered_MutOutputFile(fd, buf, count);
 #endif
                   // ------------------- mut output for demo site ---------------------
+                  // ------------------- check sysio log -----------------------
+                  #ifdef LOG_SYSIO_CALL
+                if (MUTATION_ID != 0 && !isOrinalLogging())
+                    checkSysioOfMutant_write((const char*)buf, count);
+                  #endif
+                  // ------------------- check sysio log -----------------------
                  if (oft->isReal()) {
                    errnoSetter.disable();
                    return __accmut_libc_write(fd, buf, count);

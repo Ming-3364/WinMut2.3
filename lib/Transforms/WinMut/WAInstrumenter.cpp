@@ -17,6 +17,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include <llvm/Transforms/WinMut/DebugMacro.h>
+
 using namespace llvm;
 
 WAInstrumenter::WAInstrumenter(bool useWindowAnalysis, bool optimizedInstrumentation) : ModulePass(ID), useWindowAnalysis(useWindowAnalysis), optimizedInstrumentation(optimizedInstrumentation) {}
@@ -193,6 +195,9 @@ void WAInstrumenter::initialFuncs() {
       {"__accmut__process_i32_cmp_GoodVar_init", goodvari32i32FuncTy},
       {"__accmut__process_i64_cmp_GoodVar", goodvari64i32FuncTy},
       {"__accmut__process_i64_cmp_GoodVar_init", goodvari64i32FuncTy},
+#ifdef STATIC_ANA_FOR_WEAK_MUTATION  // OR: Output Related
+      {"__accmut__process_i32_arith_OR", normali32i32FuncTy},
+#endif
   };
 
   for (auto &p : toCreate) {
@@ -1492,6 +1497,32 @@ void WAInstrumenter::instrumentAsDMA(Instruction &I, int mut_from, int mut_to) {
 #define INT_TP 2
 #define LONG_TP 3
 
+// ------------------- STATIC_ANA_FOR_WEAK_MUTATION ---------------------
+static std::vector<std::string> OR_func_list = {
+  "printf",
+};
+
+bool isOutputRelated(Instruction *cur_it){
+  llvm::errs() << "OR Checking: " << *cur_it << "\n";
+  for (User *U : cur_it->users()) {
+    llvm::errs() << "\tUser :" << *U << "\n";
+    if (auto *Call = dyn_cast<CallInst>(U)) {
+        llvm::errs() << "\tCall :" << *Call << "\n";
+        llvm::errs() << "\tName :" << Call->getCalledFunction()->getName() << "\n";
+        Function *CalledFunction = Call->getCalledFunction();
+        for (const auto& func : OR_func_list)
+        if (CalledFunction && CalledFunction->getName() == func) {
+          llvm::errs() << "\t\tUser :" << *Call << " OK" << "\n";
+
+          return true;
+        }
+    }
+  }
+  return false;
+}
+// ------------------- STATIC_ANA_FOR_WEAK_MUTATION ---------------------
+
+
 static int getTypeMacro(Type *t) {
   int res = -1;
   if (t->isIntegerTy()) {
@@ -1577,13 +1608,18 @@ static bool pushPreparecallParam(std::vector<Value *> &params, int index,
     exit(-1);
   }
   return true;
+
 }
+
+#define INSTRUMENT_SEQUENCE
 
 void WAInstrumenter::instrumentCallInst(CallInst *cur_it, int mut_from,
                                         int mut_to) {
   // move all constant literal and SSA value to repalce to alloca, e.g
   // foo(a+5)->b = a+5;foo(b)
-
+#ifdef INSTRUMENT_SEQUENCE
+  llvm::errs() << "instrumentCallInst\n";
+#endif
   for (auto OI = cur_it->op_begin(), OE = cur_it->op_end(); OI != OE; ++OI) {
     Value *V = OI->get();
     Type *type = V->getType();
@@ -1783,6 +1819,9 @@ void WAInstrumenter::instrumentCallInst(CallInst *cur_it, int mut_from,
 
 void WAInstrumenter::instrumentStoreInst(StoreInst *st, int mut_from,
                                          int mut_to) {
+#ifdef INSTRUMENT_SEQUENCE
+  llvm::errs() << "instrumentStoreInst\n";
+#endif
   // TODO:: add or call inst?
   if (ConstantInt *cons = dyn_cast<ConstantInt>(st->getValueOperand())) {
     AllocaInst *alloca = new AllocaInst(cons->getType(), 0, "cons_alias", st);
@@ -1882,7 +1921,10 @@ void WAInstrumenter::instrumentArithInst(Instruction *cur_it, int mut_from,
                                          int good_from, int good_to,
                                          bool is_first, int left_id,
                                          int right_id, int ret_id) {
-  Type *ori_ty = cur_it->getType();
+#ifdef INSTRUMENT_SEQUENCE
+  llvm::errs() << "instrumentArithInst\n";
+#endif
+Type *ori_ty = cur_it->getType();
   Function *f_process;
   if (ori_ty->isIntegerTy(32)) {
     if (aboutGoodVariable) {
@@ -1892,7 +1934,12 @@ void WAInstrumenter::instrumentArithInst(Instruction *cur_it, int mut_from,
         f_process = funcMapping["__accmut__process_i32_arith_GoodVar"];
       }
     } else {
-      f_process = funcMapping["__accmut__process_i32_arith"];
+      #ifdef STATIC_ANA_FOR_WEAK_MUTATION
+      if (isOutputRelated(cur_it))
+        f_process = funcMapping["__accmut__process_i32_arith_OR"];
+      else
+      #endif
+        f_process = funcMapping["__accmut__process_i32_arith"];
     }
   } else if (ori_ty->isIntegerTy(64)) {
     if (aboutGoodVariable) {
@@ -1975,6 +2022,10 @@ void WAInstrumenter::instrumentCmpInst(Instruction *cur_it, int mut_from,
                                        int good_from, int good_to,
                                        bool is_first, int left_id, int right_id,
                                        int ret_id) {
+#ifdef INSTRUMENT_SEQUENCE
+  llvm::errs() << "instrumentCmpInst\n";
+#endif
+  
   Function *f_process;
 
   if (cur_it->getOperand(0)->getType()->isIntegerTy(32)) {
