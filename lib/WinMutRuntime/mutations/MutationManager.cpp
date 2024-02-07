@@ -266,7 +266,7 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
 
         filter_mutants(depSpec, i);
         {
-          PageProtector pg(&MUTATION_ID, 1);
+          // PageProtector pg(&MUTATION_ID, 1);
           MUTATION_ID = eq_class[i].mut_id[0];
           MUTATION_ID_LOCAL = eq_class[i].mut_id[0] - offset;
 
