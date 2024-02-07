@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <llvm/Transforms/WinMut/DebugMacro.h>
+#include <set>
 
 using namespace llvm;
 
@@ -1080,6 +1081,40 @@ bool WAInstrumenter::readInMuts() {
   return true;
 }
 
+#ifdef STATIC_ANA_FOR_WEAK_MUTATION
+// OR: Output Related
+std::set<string> OR_func_list = {"printf", "write", "fprintf"};
+std::set<Instruction *> OR_inst_list;
+
+unsigned long long num_OR_func = 0;
+unsigned long long num_OR_inst = 0;
+unsigned long long num_arith_32 = 0;
+
+
+// struct MyCallInstVisitor : public InstVisitor<MyCallInstVisitor> {
+//     std::vector<Instruction *> callInstructions;
+
+//     // Override visitCallInst method to visit call instructions
+//     void visitCallInst(CallInst &CI) {
+//       Function *calledFunction = CI.getCalledFunction();
+//       if (calledFunction) {
+//         StringRef functionName = calledFunction->getName();
+//         if (functionName.equals("printf") || functionName.equals("write")) {
+//           // Iterate through arguments of the call instruction
+//           for (Use &U : CI.args()) {
+//             Value *arg = U.get();
+//             // Check if the argument is an instruction
+//             if (Instruction *argInst = dyn_cast<Instruction>(arg)) {
+//               // Store the instruction pointer in the array
+//               callInstructions.push_back(argInst);
+//             }
+//           }
+//         }
+//       }
+//     }
+//   };
+#endif
+
 bool WAInstrumenter::runOnModule(Module &M) {
 
   TheModule = &M;
@@ -1119,6 +1154,11 @@ bool WAInstrumenter::runOnModule(Module &M) {
   }
    */
 
+#ifdef STATIC_ANA_FOR_WEAK_MUTATION
+  std::ofstream saStat("/home/bjtucs/saStat.txt", std::ios::app);
+  saStat << num_OR_func << " " << num_OR_inst << " " << num_arith_32 << "\n";
+#endif
+
   return true;
 }
 
@@ -1144,6 +1184,33 @@ bool WAInstrumenter::runOnFunction(Function &F) {
 #endif
 
   getInstMutsMap(v, F);
+
+#ifdef STATIC_ANA_FOR_WEAK_MUTATION
+  for (BasicBlock &BB : F.getBasicBlockList()) {
+    for (auto it = BB.begin(); it != BB.end(); ++it) {
+      Instruction* inst = &*it;
+      if (auto *Call = dyn_cast<CallInst>(inst)) {
+        // llvm::errs() << "\tCall :" << *Call << "\n";
+        // llvm::errs() << "\tName :" << Call->getCalledFunction()->getName() << "\n";
+        Function *CalledFunction = Call->getCalledFunction();
+        if (CalledFunction && OR_func_list.find(CalledFunction->getName()) != OR_func_list.end()) {
+          num_OR_func++;
+          for (int i = 0; i < Call->getNumArgOperands(); ++i){
+            Value *arg = Call->getArgOperand(i);
+            // llvm::errs() << "\t\tUser :" << *arg << " ";
+            if (Instruction *argInst = dyn_cast<Instruction>(arg)){
+              num_OR_inst++;
+              OR_inst_list.insert(argInst);
+              // llvm::errs() << " OK";
+
+            }
+            // llvm::errs() << "\n";
+          }
+        }
+      }
+    }
+  }
+#endif
 
   if (optimizedInstrumentation) {
     auto toInstrumentBBs =
@@ -1498,27 +1565,32 @@ void WAInstrumenter::instrumentAsDMA(Instruction &I, int mut_from, int mut_to) {
 #define LONG_TP 3
 
 // ------------------- STATIC_ANA_FOR_WEAK_MUTATION ---------------------
-static std::vector<std::string> OR_func_list = {
-  "printf",
-};
+// static std::vector<std::string> OR_func_list = {
+//   "printf",
+// };
 
 bool isOutputRelated(Instruction *cur_it){
-  llvm::errs() << "OR Checking: " << *cur_it << "\n";
-  for (User *U : cur_it->users()) {
-    llvm::errs() << "\tUser :" << *U << "\n";
-    if (auto *Call = dyn_cast<CallInst>(U)) {
-        llvm::errs() << "\tCall :" << *Call << "\n";
-        llvm::errs() << "\tName :" << Call->getCalledFunction()->getName() << "\n";
-        Function *CalledFunction = Call->getCalledFunction();
-        for (const auto& func : OR_func_list)
-        if (CalledFunction && CalledFunction->getName() == func) {
-          llvm::errs() << "\t\tUser :" << *Call << " OK" << "\n";
+  if (OR_inst_list.find(cur_it) != OR_inst_list.end())
+    return true;
+  else
+    return false;
 
-          return true;
-        }
-    }
-  }
-  return false;
+  // llvm::errs() << "OR Checking: " << *cur_it << "\n";
+  // for (User *U : cur_it->users()) {
+  //   llvm::errs() << "\tUser :" << *U << "\n";
+  //   if (auto *Call = dyn_cast<CallInst>(U)) {
+  //       llvm::errs() << "\tCall :" << *Call << "\n";
+  //       llvm::errs() << "\tName :" << Call->getCalledFunction()->getName() << "\n";
+  //       Function *CalledFunction = Call->getCalledFunction();
+  //       for (const auto& func : OR_func_list)
+  //       if (CalledFunction && CalledFunction->getName() == func) {
+  //         llvm::errs() << "\t\tUser :" << *Call << " OK" << "\n";
+
+  //         return true;
+  //       }
+  //   }
+  // }
+  // return false;
 }
 // ------------------- STATIC_ANA_FOR_WEAK_MUTATION ---------------------
 
@@ -1611,7 +1683,7 @@ static bool pushPreparecallParam(std::vector<Value *> &params, int index,
 
 }
 
-#define INSTRUMENT_SEQUENCE
+// #define INSTRUMENT_SEQUENCE
 
 void WAInstrumenter::instrumentCallInst(CallInst *cur_it, int mut_from,
                                         int mut_to) {
@@ -1935,8 +2007,10 @@ Type *ori_ty = cur_it->getType();
       }
     } else {
       #ifdef STATIC_ANA_FOR_WEAK_MUTATION
-      if (isOutputRelated(cur_it))
+      if (isOutputRelated(cur_it)) {
         f_process = funcMapping["__accmut__process_i32_arith_OR"];
+        num_arith_32++;
+      }
       else
       #endif
         f_process = funcMapping["__accmut__process_i32_arith"];

@@ -76,6 +76,11 @@ void __accmut__set_max_num(size_t numOfGoodVar, size_t numOfMutants);
 
 void __accmut__log(int mut_id, int mut_id_local, int rmi_off, int left,
                    int right, bool choose, int id);
+
+#ifdef STATIC_ANA_FOR_WEAK_MUTATION
+int __accmut__process_i32_arith_OR(RegMutInfo *rmi, int from, int to, int left,
+                                int right);
+#endif
 }
 
 #endif // LLVM_MUTATIONCAPI_H

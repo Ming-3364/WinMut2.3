@@ -13,6 +13,8 @@
 #include <malloc.h>
 #include <sstream>
 #include <wait.h>
+
+#include <llvm/WinMutRuntime/mutations/WeakMutationFlag.h>
 extern "C" {
 void reset_stdio();
 }
@@ -221,3 +223,15 @@ void __accmut__log(int mut_id, int mut_id_local, int rmi_off, int left,
     }
   }
 }
+
+#ifdef STATIC_ANA_FOR_WEAK_MUTATION
+int __accmut__process_i32_arith_OR(RegMutInfo *rmi, int from, int to, int left,
+                                int right) {
+  do_not_fork = 1;
+  auto mm = MutationManager::getInstance();
+  int ret =  mm->process_i32_arith(rmi, from, to, left, right);
+  do_not_fork = 0;
+  return ret;
+
+}
+#endif

@@ -16,6 +16,7 @@ add_llvm_library(LLVMWinMutRuntime SHARED
         MutOutput.cpp
         accel-sysio.cpp
         logging/LogForMutTool.cpp
+        mutations/WeakMutationFlag.cpp
         ADDITIONAL_HEADER_DIRS
         ${LLVM_MAIN_INCLUDE_DIR}/llvm/WinMutRuntime
         )
