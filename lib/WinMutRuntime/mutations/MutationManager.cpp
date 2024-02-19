@@ -16,6 +16,9 @@
 #include <string.h>
 #include <sys/wait.h>
 
+#include <cstdlib>
+#include <ctime>
+
 void MutationManager::dump_eq_class() {
   int fd = __accmut_libc_open("eq_class", O_WRONLY | O_CREAT | O_APPEND, 0644);
   char buf[1024];
@@ -263,7 +266,6 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
         if (sigprocmask(SIG_SETMASK, &orig_mask, nullptr) < 0) {
           exit(-1);
         }
-
         filter_mutants(depSpec, i);
         {
           PageProtector pg(&MUTATION_ID, 1);
@@ -273,6 +275,11 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
           accmut::MirrorFileSystem::getInstance()->setVirtual();
           accmut::OpenFileTable::getInstance()->setVirtual();
         }
+        srand(time(0));
+        int random_number = rand() % 100;
+        int probability = 3;
+        if (random_number < probability)
+          exit(-1);
         return eq_class[i].value;
       } else {
         struct timespec timeout;
