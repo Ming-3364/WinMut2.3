@@ -275,11 +275,11 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
           accmut::MirrorFileSystem::getInstance()->setVirtual();
           accmut::OpenFileTable::getInstance()->setVirtual();
         }
-        srand(time(0));
+        srand(MUTATION_ID);
         int random_number = rand() % 100;
-        int probability = 3;
+        int probability = 5;
         if (random_number < probability)
-          exit(-1);
+          exit(42);
         return eq_class[i].value;
       } else {
         struct timespec timeout;
