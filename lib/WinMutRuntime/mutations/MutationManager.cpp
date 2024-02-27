@@ -275,14 +275,7 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
   // -------------- proc_tree: reduced in ori -----------------
 
 
-// ----------------------- 如果是通过后缀 _OR 调用的，则不必fork -------------------------
-#ifdef STATIC_ANA_FOR_WEAK_MUTATION
-  if (do_not_fork){
-    writeToMutToolLogFile("safwm", "not fork\n");
-    return result;
-  }
-#endif
-// ----------------------- 如果是通过后缀 _OR 调用的，则不必fork -------------------------
+
   if (get_default_timer() != 0) {
     if (likely(MUTATION_ID != 0))
       accmut_disable_real_timer();
@@ -330,6 +323,16 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
         accmut::MutOutput::getInstance()->copy_and_register_MutOutputFile(eq_class[i].mut_id);
 #endif
         // ------------------- mut output for demo site ---------------------
+
+        // ----------------------- 如果是通过后缀 _OR 调用的，则砍掉 -------------------------
+        #ifdef STATIC_ANA_FOR_WEAK_MUTATION
+        if (do_not_fork){
+          // writeToMutToolLogFile("safwm", "not fork\n");
+          // return result;
+          exit(42);
+        }
+        #endif
+        // ----------------------- 如果是通过后缀 _OR 调用的，则砍掉 -------------------------
         return eq_class[i].value;
       } else {
         struct timespec timeout;

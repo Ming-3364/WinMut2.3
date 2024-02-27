@@ -80,6 +80,37 @@ void __accmut__log(int mut_id, int mut_id_local, int rmi_off, int left,
 #ifdef STATIC_ANA_FOR_WEAK_MUTATION
 int __accmut__process_i32_arith_OR(RegMutInfo *rmi, int from, int to, int left,
                                 int right);
+int64_t __accmut__process_i64_arith_OR(RegMutInfo *rmi, int from, int to,
+                                    int64_t left, int64_t right);
+
+int __accmut__process_i32_cmp_OR(RegMutInfo *rmi, int from, int to, int left,
+                              int right);
+
+int __accmut__process_i64_cmp_OR(RegMutInfo *rmi, int from, int to, int64_t left,
+                              int64_t right);
+int32_t __accmut__process_i32_arith_GoodVar_OR(int32_t left, int32_t right,
+                                            GoodvarArg *arg);
+
+int64_t __accmut__process_i64_arith_GoodVar_OR(int64_t left, int64_t right,
+                                            GoodvarArg *arg);
+
+int32_t __accmut__process_i32_cmp_GoodVar_OR(int32_t left, int32_t right,
+                                          GoodvarArg *arg);
+
+int32_t __accmut__process_i64_cmp_GoodVar_OR(int64_t left, int64_t right,
+                                          GoodvarArg *arg);
+
+int32_t __accmut__process_i32_arith_GoodVar_init_OR(int32_t left, int32_t right,
+                                                 GoodvarArg *arg);
+
+int64_t __accmut__process_i64_arith_GoodVar_init_OR(int64_t left, int64_t right,
+                                                 GoodvarArg *arg);
+
+int32_t __accmut__process_i32_cmp_GoodVar_init_OR(int32_t left, int32_t right,
+                                               GoodvarArg *arg);
+
+int32_t __accmut__process_i64_cmp_GoodVar_init_OR(int64_t left, int64_t right,
+                                               GoodvarArg *arg);
 #endif
 }
 

@@ -198,6 +198,17 @@ void WAInstrumenter::initialFuncs() {
       {"__accmut__process_i64_cmp_GoodVar_init", goodvari64i32FuncTy},
 #ifdef STATIC_ANA_FOR_WEAK_MUTATION  // OR: Output Related
       {"__accmut__process_i32_arith_OR", normali32i32FuncTy},
+      {"__accmut__process_i64_arith_OR", normali64i64FuncTy},
+      {"__accmut__process_i32_arith_GoodVar_OR", goodvari32i32FuncTy},
+      {"__accmut__process_i32_arith_GoodVar_init_OR", goodvari32i32FuncTy},
+      {"__accmut__process_i64_arith_GoodVar_OR", goodvari64i64FuncTy},
+      {"__accmut__process_i64_arith_GoodVar_init_OR", goodvari64i64FuncTy},
+      {"__accmut__process_i32_cmp_OR", normali32i32FuncTy},
+      {"__accmut__process_i64_cmp_OR", normali64i32FuncTy},
+      {"__accmut__process_i32_cmp_GoodVar_OR", goodvari32i32FuncTy},
+      {"__accmut__process_i32_cmp_GoodVar_init_OR", goodvari32i32FuncTy},
+      {"__accmut__process_i64_cmp_GoodVar_OR", goodvari64i32FuncTy},
+      {"__accmut__process_i64_cmp_GoodVar_init_OR", goodvari64i32FuncTy},
 #endif
   };
 
@@ -1088,7 +1099,20 @@ std::set<Instruction *> OR_inst_list;
 
 unsigned long long num_OR_func = 0;
 unsigned long long num_OR_inst = 0;
+
+unsigned long long num_instrument = 0;
 unsigned long long num_arith_32 = 0;
+unsigned long long num_arith_64 = 0;
+unsigned long long num_arith_32_GoodVar = 0;
+unsigned long long num_arith_64_GoodVar = 0;
+unsigned long long num_arith_32_GoodVar_init = 0;
+unsigned long long num_arith_64_GoodVar_init = 0;
+unsigned long long num_cmp_32 = 0;
+unsigned long long num_cmp_64 = 0;
+unsigned long long num_cmp_32_GoodVar = 0;
+unsigned long long num_cmp_64_GoodVar = 0;
+unsigned long long num_cmp_32_GoodVar_init = 0;
+unsigned long long num_cmp_64_GoodVar_init = 0;
 
 
 // struct MyCallInstVisitor : public InstVisitor<MyCallInstVisitor> {
@@ -1156,7 +1180,14 @@ bool WAInstrumenter::runOnModule(Module &M) {
 
 #ifdef STATIC_ANA_FOR_WEAK_MUTATION
   std::ofstream saStat("/home/bjtucs/saStat.txt", std::ios::app);
-  saStat << num_OR_func << " " << num_OR_inst << " " << num_arith_32 << "\n";
+  saStat << num_OR_func << " " << num_OR_inst << " " << num_instrument 
+          <<  " " << num_arith_32              <<  " " << num_arith_64
+          <<  " " << num_arith_32_GoodVar      <<  " " << num_arith_64_GoodVar
+          <<  " " << num_arith_32_GoodVar_init <<  " " << num_arith_64_GoodVar_init
+          <<  " " << num_cmp_32              <<  " " << num_cmp_64
+          <<  " " << num_cmp_32_GoodVar      <<  " " << num_cmp_64_GoodVar
+          <<  " " << num_cmp_32_GoodVar_init <<  " " << num_cmp_64_GoodVar_init
+          << "\n";
 #endif
 
   return true;
@@ -1998,6 +2029,54 @@ void WAInstrumenter::instrumentArithInst(Instruction *cur_it, int mut_from,
 #endif
 Type *ori_ty = cur_it->getType();
   Function *f_process;
+
+  #ifdef STATIC_ANA_FOR_WEAK_MUTATION
+  if (isOutputRelated(cur_it)) {
+    if (ori_ty->isIntegerTy(32)) {
+      if (aboutGoodVariable) {
+        if (is_first) {
+          f_process = funcMapping["__accmut__process_i32_arith_GoodVar_init_OR"];
+          ++num_instrument;
+          ++num_arith_32_GoodVar_init;
+        } else {
+          f_process = funcMapping["__accmut__process_i32_arith_GoodVar_OR"];
+          ++num_instrument;
+          ++num_arith_32_GoodVar;
+        }
+      } else {
+        f_process = funcMapping["__accmut__process_i32_arith_OR"];
+        ++num_instrument;
+        ++num_arith_32;
+      }
+    } else if (ori_ty->isIntegerTy(64)) {
+      if (aboutGoodVariable) {
+        if (is_first) {
+          f_process = funcMapping["__accmut__process_i64_arith_GoodVar_init_OR"];
+          ++num_instrument;
+          ++num_arith_64_GoodVar_init;
+        } else {
+          f_process = funcMapping["__accmut__process_i64_arith_GoodVar_OR"];
+          ++num_instrument;
+          ++num_arith_64_GoodVar;
+        }
+      } else {
+        f_process = funcMapping["__accmut__process_i64_arith_OR"];
+        ++num_instrument;
+        ++num_arith_64;
+      }
+    } else {
+      ERRMSG("ArithInst TYPE ERROR ");
+      // cur_it->dump();
+      llvm::errs() << *ori_ty << "\n";
+      llvm::errs() << *cur_it << "\n";
+      llvm::errs() << *(cur_it->getParent()) << "\n";
+      // TODO:: handle i1, i8, i64 ... type
+      assert(false);
+      exit(-1);
+    }
+  }
+  else
+  #endif
   if (ori_ty->isIntegerTy(32)) {
     if (aboutGoodVariable) {
       if (is_first) {
@@ -2006,14 +2085,7 @@ Type *ori_ty = cur_it->getType();
         f_process = funcMapping["__accmut__process_i32_arith_GoodVar"];
       }
     } else {
-      #ifdef STATIC_ANA_FOR_WEAK_MUTATION
-      if (isOutputRelated(cur_it)) {
-        f_process = funcMapping["__accmut__process_i32_arith_OR"];
-        num_arith_32++;
-      }
-      else
-      #endif
-        f_process = funcMapping["__accmut__process_i32_arith"];
+      f_process = funcMapping["__accmut__process_i32_arith"];
     }
   } else if (ori_ty->isIntegerTy(64)) {
     if (aboutGoodVariable) {
@@ -2102,6 +2174,51 @@ void WAInstrumenter::instrumentCmpInst(Instruction *cur_it, int mut_from,
   
   Function *f_process;
 
+
+  #ifdef STATIC_ANA_FOR_WEAK_MUTATION
+  if (isOutputRelated(cur_it)) {
+    if (cur_it->getOperand(0)->getType()->isIntegerTy(32)) {
+
+      if (aboutGoodVariable) {
+        if (is_first) {
+          f_process = funcMapping["__accmut__process_i32_cmp_GoodVar_init_OR"];
+          ++num_instrument;
+          ++num_cmp_32_GoodVar_init;
+        } else {
+          f_process = funcMapping["__accmut__process_i32_cmp_GoodVar_OR"];
+          ++num_instrument;
+          ++num_cmp_32_GoodVar;
+        }
+      } else {
+        f_process = funcMapping["__accmut__process_i32_cmp_OR"];
+        ++num_instrument;
+        ++num_cmp_32;
+      }
+    } else if (cur_it->getOperand(0)->getType()->isIntegerTy(64)) {
+
+      if (aboutGoodVariable) {
+        if (is_first) {
+          f_process = funcMapping["__accmut__process_i64_cmp_GoodVar_init_OR"];
+          ++num_instrument;
+          ++num_cmp_64_GoodVar_init;
+        } else {
+          f_process = funcMapping["__accmut__process_i64_cmp_GoodVar_OR"];
+          ++num_instrument;
+          ++num_cmp_64_GoodVar;
+        }
+      } else {
+        f_process = funcMapping["__accmut__process_i64_cmp_OR"];
+        ++num_instrument;
+        ++num_cmp_64;
+      }
+    } else {
+      ERRMSG("ICMP TYPE ERROR ");
+      assert(false);
+      exit(-1);
+    }
+  }
+  else
+  #endif
   if (cur_it->getOperand(0)->getType()->isIntegerTy(32)) {
 
     if (aboutGoodVariable) {
