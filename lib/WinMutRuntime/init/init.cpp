@@ -60,6 +60,7 @@ static void print_time_line(const char *prefix) {
   // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
 #ifdef MUT_TOOL
   writeToMutToolLogFile("proc_tree",  get_print_line(prefix).c_str());
+  writeToMutToolLogFile("forked",  get_print_line(prefix).c_str());
 #endif
 // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
 
@@ -203,6 +204,12 @@ if (mcheck(abort_func) < 0) {
     mkMutToolLogDir(alreadyRunned + 1);
 #endif
 // ---------------- 构建为 run的 case 输出目录 ： WINMUT_LOG_FILE_PREFIX/run/case_xx -----------------
+#ifdef CASE_BEGIN_FROM
+    if (alreadyRunned + 1 < 28 && alreadyRunned + 1 >= 13) {
+      writeToLogFile("ran", "#");
+      exit(0);
+    }
+#endif
   }
 
   char *measureCount = getenv("WINMUT_MEASURE_COUNT");

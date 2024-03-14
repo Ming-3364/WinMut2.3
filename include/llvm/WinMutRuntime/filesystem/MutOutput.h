@@ -6,6 +6,10 @@
 namespace accmut {
     class MutOutput{
         int createdStdoutFileFor0;  // 为原始进程创建的stdout输出文件的文件描述符，只应当在原始进程中使用
+        int createdStderrFileFor0;
+
+        int fdOfDevNull;
+
         // std::map<int, int> createdStdoutFileForN0;  // <mut_id, fd>
         
         // TODO: 或许可以再添加一个 set 来记录当前进程分支已经打开的文件来减少查找时间，小优化
@@ -24,6 +28,7 @@ namespace accmut {
         // };
         MutOutput(){
             createdStdoutFileFor0 = open_stdoutcopy();
+            createdStderrFileFor0 = open_stderrcopy();
         };
         static MutOutput* holdptr;
         public:
@@ -43,6 +48,7 @@ namespace accmut {
             // static bool isRegFile(int fd);
 
             int open_stdoutcopy();
+            int open_stderrcopy();
             void open_and_register_MutOutputFile(const char* filepath, int fd, int flags, int mode);
             void prepare_copy(int copy_from, std::vector<int> mut_id_need_split);
             void copy_and_register_MutOutputFile(std::vector<int> eq_class_mut_id);

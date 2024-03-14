@@ -13,6 +13,9 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <sstream>
+
+#include <fstream>
 
 namespace accmut{
 
@@ -116,7 +119,7 @@ namespace accmut{
         size_t length = strlen(filepath_str);
         int i = 0;
         for (; i < length; ++i){
-            if (filepath_str[i] == '\\')
+            if (filepath_str[i] == '/')
                 filename[i] = '_';
             else
                 filename[i] = filepath_str[i];
@@ -139,7 +142,19 @@ namespace accmut{
         // assert(openedFileSet.find(filepath_ori) == openedFileSet.end() && MUTATION_ID == 0
         //         && "open_stdoutcopy : file reopen\n");
         if (openedFileSet.find(filepath_ori) != openedFileSet.end()){
-            ERROR_MUT_TOOL("open_stdoutcopy : file reopen\n");
+            std::ostringstream oss;
+            oss << "open_stdoutcopy : file reopen : " << filepath_ori << "\n";
+            oss << "current openedFileSet:\n";
+            int count = 0;
+            for (auto it = openedFileSet.begin(); it != openedFileSet.end(); ++it) {
+                oss << *it << " ";
+                if (++count % 5 == 0) // 每输出5个元素后换行
+                    oss << "\n";
+            }
+            oss << "\n";
+            ERROR_MUT_TOOL(oss.str().c_str());
+            // ERROR_MUT_TOOL("open_stdoutcopy : file reopen\n");
+            // writeToMutToolLogFile("error-mut_tool", "open_stdoutcopy : file reopen\n");
         }
 
         char buf[1000];
@@ -159,55 +174,117 @@ namespace accmut{
         return fd;
     }
 
+    int MutOutput::open_stderrcopy(){
+        // 登记 openedFile
+        const char* filepath_ori = "stderrcopy";
+        // assert(openedFileSet.find(filepath_ori) == openedFileSet.end() && MUTATION_ID == 0
+        //         && "open_stderrcopy : file reopen\n");
+        if (openedFileSet.find(filepath_ori) != openedFileSet.end()){
+            std::ostringstream oss;
+            oss << "open_stderrcopy : file reopen : " << filepath_ori << "\n";
+            oss << "current openedFileSet:\n";
+            int count = 0;
+            for (auto it = openedFileSet.begin(); it != openedFileSet.end(); ++it) {
+                oss << *it << " ";
+                if (++count % 5 == 0) // 每输出5个元素后换行
+                    oss << "\n";
+            }
+            oss << "\n";
+            ERROR_MUT_TOOL(oss.str().c_str());
+        }
+
+        char buf[1000];
+        const char* filepath_mut = getMutOutputFilePath(filepath_ori, MUTATION_ID, buf);
+        int fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+        if (fd == -1) {
+            // perror("无法打开文件");
+            // exit(EXIT_FAILURE);
+
+            ERROR_MUT_TOOL("open_stderrcopy: fail to open file\n");
+            return -1;
+        }
+        openedFileMap_fd2path[fd] = filepath_ori;
+        openedFileMap_path2fd[filepath_ori] = fd;
+        openedFileSet.insert(filepath_ori);
+        openedMutOutputFile[MUTATION_ID][filepath_ori] = fd;
+        return fd;
+    }
+
+
+
     void MutOutput::open_and_register_MutOutputFile(const char* filepath_ori, int fd, int flags, int mode){
+        if (strcmp(filepath_ori, "/dev/null") == 0) {
+            this->fdOfDevNull = fd;
+            return;
+        }
         // if (flags & O_CREAT){ // 打开的文件是新创建的（不需要考虑读写位置）
         if (1){ // 打开的文件是新创建的（不需要考虑读写位置） 否，可能会引发问题
         
-            // // 登记 openedFile
-            // assert(openedFileSet.find(filepath_ori) == openedFileSet.end() 
-            //        && "open_and_register_MutOutputFile : file reopen\n");
-            if (openedFileSet.find(filepath_ori) != openedFileSet.end()){
-                ERROR_MUT_TOOL("open_and_register_MutOutputFile : file reopen\n");
-            }
+            // if (openedFileSet.find(filepath_ori) != openedFileSet.end()){
+            //     // ERROR_MUT_TOOL("open_and_register_MutOutputFile : file reopen\n");
+            
+            //     std::ostringstream oss;
+            //     oss << "open_and_register_MutOutputFile : file reopen : " << filepath_ori << "\n";
+            //     oss << "current openedFileSet:\n";
+            //     int count = 0;
+            //     for (auto it = openedFileSet.begin(); it != openedFileSet.end(); ++it) {
+            //         oss << *it << " ";
+            //         if (++count % 5 == 0) // 每输出5个元素后换行
+            //             oss << "\n";
+            //     }
+            //     oss << "\n";
+            //     ERROR_MUT_TOOL(oss.str().c_str());
+            // }
 
             // openedFileMap_fd2path[fd] = filepath_ori;
             // openedFileMap_path2fd[filepath_ori] = fd;
             // openedFileSet.insert(filepath_ori);
 
             if (MUTATION_ID == 0){
-                char buf[1024];
-                const char* filepath_mut = getMutOutputFilePath(filepath_ori, MUTATION_ID, buf);
-                int MutOutputFile_fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-                if (MutOutputFile_fd == -1) {
-                    // perror("无法打开文件");
-                    // exit(EXIT_FAILURE);
-
-                    ERROR_MUT_TOOL("open_and_register_MutOutputFile: fail to open file\n");
-                    return;
-                }
-                openedFileMap_fd2path[fd] = filepath_ori;
-                openedFileMap_path2fd[filepath_ori] = fd;
-                openedFileSet.insert(filepath_ori);
-                openedMutOutputFile[MUTATION_ID][filepath_ori] = MutOutputFile_fd;
-            }
-            else {  // 在子进程中需要为所有携带的变异创建
-                for (int mut_id : eq_class_mut_id){
+                if (openedFileSet.find(filepath_ori) == openedFileSet.end()) {
                     char buf[1024];
-                    const char* filepath_mut = getMutOutputFilePath(filepath_ori, mut_id, buf);
-                    int MutOutputFile_fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+                    const char* filepath_mut = getMutOutputFilePath(filepath_ori, MUTATION_ID, buf);
+                    int MutOutputFile_fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
                     if (MutOutputFile_fd == -1) {
                         // perror("无法打开文件");
                         // exit(EXIT_FAILURE);
-
-                        ERROR_MUT_TOOL("fail to open file\n");
+                        std::ostringstream oss;
+                        oss << "(ORI) open_and_register_MutOutputFile: fail to open file [" << filepath_mut << "]\n";
+                        ERROR_MUT_TOOL(oss.str().c_str());
                         return;
                     }
-                    openedMutOutputFile[mut_id][filepath_ori] = MutOutputFile_fd;
-
+                    
+                    openedFileSet.insert(filepath_ori);
+                    openedMutOutputFile[MUTATION_ID][filepath_ori] = MutOutputFile_fd;
                 }
+
                 openedFileMap_fd2path[fd] = filepath_ori;
                 openedFileMap_path2fd[filepath_ori] = fd;
-                openedFileSet.insert(filepath_ori);
+                
+            }
+            else {  // 在子进程中需要为所有携带的变异创建
+                if (openedFileSet.find(filepath_ori) == openedFileSet.end()) {
+                    for (int mut_id : eq_class_mut_id){
+                        char buf[1024];
+                        const char* filepath_mut = getMutOutputFilePath(filepath_ori, mut_id, buf);
+                        int MutOutputFile_fd = __accmut_libc_open(filepath_mut, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+                        if (MutOutputFile_fd == -1) {
+                            // perror("无法打开文件");
+                            // exit(EXIT_FAILURE);
+                            std::ostringstream oss;
+                            oss << "(MUT) open_and_register_MutOutputFile: fail to open file [" << filepath_mut << "]\n";
+                            ERROR_MUT_TOOL(oss.str().c_str());
+                            return;
+                        }
+                        openedMutOutputFile[mut_id][filepath_ori] = MutOutputFile_fd;
+
+                    }
+                    openedFileSet.insert(filepath_ori);
+
+                }
+                
+                openedFileMap_fd2path[fd] = filepath_ori;
+                openedFileMap_path2fd[filepath_ori] = fd;
             }
             
         }
@@ -225,17 +302,43 @@ namespace accmut{
             // 1. 更新 copy_from
             this->copy_from = copy_from;    // 更新 copy_from
             
-            // 2. 在执行 fork 前剔除需要自立门户的 mut_output
+            // 2. 在fork前剔除需要自立门户的 mut_output（由于单进程，当一个进程自立门户后，它的输出就自己搞定了，不需要再和eq_class一起写）
             for (int mut_id : mut_id_need_remove){
-                auto it = std::find(eq_class_mut_id.begin(), eq_class_mut_id.end(),mut_id);
-                // assert( it != eq_class_mut_id.end() 
-                //     && "prepare_copy : Try removing an ID that doesn't exist\n");
-                if (it == eq_class_mut_id.end()){
-                    ERROR_MUT_TOOL("prepare_copy : Try removing an ID that doesn't exist\n");
+                // auto it = std::find(eq_class_mut_id.begin(), eq_class_mut_id.end(),mut_id);
+                // // assert( it != eq_class_mut_id.end() 
+                // //     && "prepare_copy : Try removing an ID that doesn't exist\n");
+                // if (it == eq_class_mut_id.end()){
+                //     std::ostringstream oss;
+                //     oss << "prepare_copy : While copy from " << copy_from << ", try to remove a MUTAION_ID that doesn't exist: " << MUTATION_ID << "\n";
+                //     oss << "Current eq_class_mud_id = {";
+                //     for (int i : eq_class_mut_id) {
+                //         oss << i << ", ";
+                //     }
+                //     oss << "}\n";
+                //     ERROR_MUT_TOOL(oss.str().c_str());
+                //     return;
+                // }
+                int flag = 0;
+                auto it = eq_class_mut_id.begin();
+                for (; it != eq_class_mut_id.end(); ++it){
+                    if (*it == mut_id){
+                        flag = 1;
+                        break;
+                    }
+                }
+                if (flag == 1)
+                    eq_class_mut_id.erase(it);
+                else {
+                    std::ostringstream oss;
+                    oss << "prepare_copy : While copy from " << copy_from << ", try to remove a MUTAION_ID that doesn't exist: " << mut_id << "\n";
+                    oss << "Current eq_class_mud_id = {";
+                    for (int i : eq_class_mut_id) {
+                        oss << i << ", ";
+                    }
+                    oss << "}\n";
+                    ERROR_MUT_TOOL(oss.str().c_str());
                     return;
                 }
-
-                eq_class_mut_id.erase(it);
             }
         }
     }
@@ -250,7 +353,7 @@ namespace accmut{
                 if (openedMutOutputFile.find(mut_id) != openedMutOutputFile.end()
                     && openedMutOutputFile[mut_id].find(filepath_ori) != openedMutOutputFile[mut_id].end())
                 {
-                    return;        
+                    continue;        
                 }
                 char buf[1024];
                 const char* filepath_to = getMutOutputFilePath(filepath_ori.c_str(), mut_id, buf);
@@ -281,16 +384,72 @@ namespace accmut{
     }
 
     void MutOutput::write_registered_MutOutputFile(int fd, const void *buf, size_t count){
+        if (fd == this->fdOfDevNull)
+            return;
+
         if (fd == 1)
             fd = createdStdoutFileFor0;
+        if (fd == 2)
+            fd = createdStderrFileFor0;
+        if (openedFileMap_fd2path.find(fd) == openedFileMap_fd2path.end()){
+            std::ostringstream oss;
+            oss << "write_registered_MutOutputFile: write to unregistered file, we don't kown file name, it's fd is: " << fd << "\n";
+            
+            char linkname[512];
+            ssize_t r;
+
+            // 构造符号链接路径
+            snprintf(linkname, sizeof(linkname), "/proc/self/fd/%d", fd);
+
+            // 读取符号链接
+            r = __accmut_libc_readlink(linkname, linkname, sizeof(linkname) - 1);
+            
+            if (r == -1) {
+                oss << "readlink error\n";
+                return ;
+            }
+            linkname[r] = '\0'; // 添加字符串结束符
+
+            // 输出文件名
+            oss << "File name for fd " << fd << ": " << linkname << std::endl;
+
+            ERROR_MUT_TOOL(oss.str().c_str());
+            return;
+        }
         const char* filepath_ori = openedFileMap_fd2path[fd].c_str();
         if (MUTATION_ID == 0) {
+            if (openedMutOutputFile.find(MUTATION_ID) == openedMutOutputFile.end() 
+                || openedMutOutputFile[MUTATION_ID].find(filepath_ori) == openedMutOutputFile[MUTATION_ID].end()) {
+                std::ostringstream oss;
+                oss << "(ORI) write_registered_MutOutputFile: fail to write file [" << filepath_ori << "] for " << MUTATION_ID <<"\n";
+                ERROR_MUT_TOOL(oss.str().c_str());
+                return;
+            }
             int MutOutputFile_fd = openedMutOutputFile[MUTATION_ID][filepath_ori];
             __accmut_libc_write(MutOutputFile_fd, buf, count);
+            // __accmut_libc_write(MutOutputFile_fd, "a write\n", 8);
         }
         else {
             for (auto it = eq_class_mut_id.begin(); it != eq_class_mut_id.end(); ++it){
                 int mut_id = *it;
+
+                if (openedMutOutputFile.find(mut_id) == openedMutOutputFile.end() 
+                    || openedMutOutputFile[mut_id].find(filepath_ori) == openedMutOutputFile[mut_id].end()) {
+                    std::ostringstream oss;
+                    oss << "(MUT) write_registered_MutOutputFile: fail to write file [" << filepath_ori << "] for " << mut_id <<"\n";
+                    ERROR_MUT_TOOL(oss.str().c_str());
+                    if (mut_id < 0) {
+                        std::ostringstream oss;
+                        oss << "Broken eq_class_mut_id set: "<<"\n";
+                        for (auto i : eq_class_mut_id) {
+                            oss << i << " ";
+                        }
+                        oss << "\n";
+                        ERROR_MUT_TOOL(oss.str().c_str());
+                        exit(233);
+                    }
+                    return;
+                }
                 int MutOutputFile_fd = openedMutOutputFile[mut_id][filepath_ori];
                 __accmut_libc_write(MutOutputFile_fd, buf, count);
             }

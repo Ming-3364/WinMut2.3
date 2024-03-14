@@ -25,6 +25,8 @@
 
 #include <llvm/WinMutRuntime/mutations/WeakMutationFlag.h>
 
+#include <llvm/WinMutRuntime/accel-sysio.h>
+
 void MutationManager::dump_eq_class() {
   int fd = __accmut_libc_open("eq_class", O_WRONLY | O_CREAT | O_APPEND, 0644);
   char buf[1024];
@@ -289,12 +291,14 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
       if (sigprocmask(SIG_BLOCK, &mask, &orig_mask) < 0) {
         exit(-1);
       }
+
       // ------------------- mut output for demo site ---------------------
-#ifdef MUT_OUTPUT_FOR_DEMO_SITE
+      #ifdef MUT_OUTPUT_FOR_DEMO_SITE
       // accmut::MutOutput::getInstance()->createStdoutFileForN0(eq_class[i].mut_id);
       accmut::MutOutput::getInstance()->prepare_copy(MUTATION_ID, eq_class[i].mut_id);
-#endif
+      #endif
       // ------------------- mut output for demo site ---------------------
+      
       int pid = __accmut_libc_fork();
       if (pid < 0) {
         LOG("fork FAILED");
@@ -309,6 +313,14 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
         }
 
         filter_mutants(depSpec, i);
+
+        // -------- accel./sysio : log fork from for log_sysio befor change MUTATION_ID
+        #ifdef LOG_SYSIO_CALL
+        // log_fork_from_in_log_sysio(eq_class[i].mut_id[0]);
+        copy_log_sysio_of_fork_from(eq_class[i].mut_id[0]);
+        #endif
+        // -------- accel./sysio : log fork from for log_sysio befor change MUTATION_ID
+
         {
           PageProtector pg(&MUTATION_ID, 1);
           MUTATION_ID = eq_class[i].mut_id[0];
@@ -417,9 +429,14 @@ int64_t MutationManager::fork_eqclass(const char *moduleName,
           }
         }
         writeToLogFile("forked", buf);
+
+        #ifdef MUT_TOOL
+        writeToMutToolLogFile("forked", buf);
+        #endif
+
         sprintf(buf, "%s-%d\n", moduleName, eq_class[i].mut_id[0] - offset);
         writeToLogFile("forked-simple", buf);
-
+        
         if (pr < 0) {
           kill(pid, SIGKILL);
           LOG("waitpid ERR\n");

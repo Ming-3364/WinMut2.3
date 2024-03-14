@@ -3,9 +3,11 @@
 #include <llvm/WinMutRuntime/filesystem/Path.h>
 #include <llvm/WinMutRuntime/logging/LogForMutTool.h>
 #include <llvm/WinMutRuntime/logging/LogFilePrefix.h>
+#include <llvm/WinMutRuntime/mutations/MutationIDDecl.h>
 #include <string.h>
 #include <string>
 #include <unistd.h>
+#include <sstream>
 
 using namespace accmut;
 
@@ -35,12 +37,18 @@ void setMutToolLogFilePrefix(const char *input) {
 
 const char *getMutToolLogFilePrefix() { return mut_tool_logfile_prefix_for_case; }
 
+std::string getMutToolLogTag() {
+  std::ostringstream oss;
+  oss << "Tag(" << mut_tool_logfile_prefix_for_case << " " << MUTATION_ID << ")\n";
+  return oss.str();
+}
+
 void writeToMutToolLogFile(const char *filename, const char *contents, size_t size) {
   char buff[MAXPATHLEN];
   strcpy(buff, mut_tool_logfile_prefix_for_case);
   strcat(buff, filename);
   int fd =
-      __accmut_libc_open(buff, O_APPEND | O_CREAT | O_WRONLY, 0644);
+      __accmut_libc_open(buff,  O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
   __accmut_libc_write(fd, contents, size);
   __accmut_libc_close(fd);
 }

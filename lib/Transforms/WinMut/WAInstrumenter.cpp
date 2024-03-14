@@ -1596,10 +1596,10 @@ void WAInstrumenter::instrumentAsDMA(Instruction &I, int mut_from, int mut_to) {
 #define LONG_TP 3
 
 // ------------------- STATIC_ANA_FOR_WEAK_MUTATION ---------------------
+#ifdef STATIC_ANA_FOR_WEAK_MUTATION
 // static std::vector<std::string> OR_func_list = {
 //   "printf",
 // };
-
 bool isOutputRelated(Instruction *cur_it){
   if (OR_inst_list.find(cur_it) != OR_inst_list.end())
     return true;
@@ -1623,6 +1623,7 @@ bool isOutputRelated(Instruction *cur_it){
   // }
   // return false;
 }
+#endif
 // ------------------- STATIC_ANA_FOR_WEAK_MUTATION ---------------------
 
 

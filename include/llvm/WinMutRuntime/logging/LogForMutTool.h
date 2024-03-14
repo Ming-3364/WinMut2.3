@@ -10,6 +10,8 @@ void setMutToolLogFilePrefix(const char *input);
 
 const char *getMutToolLogFilePrefix();
 
+std::string getMutToolLogTag();
+
 void writeToMutToolLogFile(const char *filename, const char *contents, size_t size);
 void writeToMutToolLogFile(const char *filename, const char *contents);
 void writeToMutToolLogFile(const char *filename, const std::string &contents);
